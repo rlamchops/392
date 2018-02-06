@@ -1,0 +1,7 @@
+version: '3'
+
+services:
+    echo_server:
+        build: ./echo_server
+        ports:
+            - "5000:5000"
