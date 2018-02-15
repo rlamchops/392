@@ -58,5 +58,36 @@ int main(int argc, char **argv){
       if (sendResult < 0) {
         fprintf(stderr, "Failed to send message to server\n");
       }
+
+      //Initiate login procedure with the server before spawning a thread for handling stdin input
+      loginProcedure(clientSocket);
+
+      //Spawn a thread for handling input from stdin
+      pthread_t stdinThread;
+      pthread_create(&stdinThread, NULL, &stdinHandler, NULL);
+
+      //Send this main thread to handle input from the server
+      serverHandler(clientSocket);
     }
+}
+
+bool loginProcedure(int serverSocket){
+    
+}
+
+void *stdinHandler(){
+    while(true){
+        fd_set rset;
+        FD_ZERO(&rset);
+        FD_SET(1, &rset);
+        select(1, &rset, NULL, NULL, NULL);
+    }
+    exit(EXIT_SUCCESS);
+}
+
+void serverHandler(int serverSocket){
+    fd_set rset;
+    FD_ZERO(&rset);
+    FD_SET(serverSocket, &rset);
+    select(1, &rset, NULL, NULL, NULL);
 }

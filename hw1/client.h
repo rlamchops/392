@@ -10,6 +10,9 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <pthread.h>
+#include <semaphore.h>
+#include <stdbool.h>
 
 #define HELP_MENU "./client [-hv] NAME SERVER_IP SERVER_PORT\n \
 -h                         Displays this help menu, and returns EXIT_SUCCESS.\n \
@@ -23,5 +26,9 @@ char * serverName;
 char * serverPort;
 struct addrinfo hints, * servInfo, * addrResult;
 int gaiResult, clientSocket, sendResult;
+
+bool loginProcedure(int serverSocket);s
+void serverHandler(int serverSocket);
+void *stdinHandler();
 
 #endif
