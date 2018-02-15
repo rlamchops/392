@@ -6,6 +6,10 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <netinet/in.h>
 
 #define HELP_MENU "./client [-hv] NAME SERVER_IP SERVER_PORT\n \
 -h                         Displays this help menu, and returns EXIT_SUCCESS.\n \
@@ -13,5 +17,11 @@
 NAME                       This is the username to display when chatting.\n\
 SERVER_IP                  The ip address of the server to connect to.\n\
 SERVER_PORT                The port to connect to.\n"
+
+char * userName;
+char * serverName;
+char * serverPort;
+struct addrinfo hints, * servInfo, * addrResult;
+int gaiResult, clientSocket, sendResult;
 
 #endif
