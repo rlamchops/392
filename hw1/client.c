@@ -13,15 +13,14 @@ int main(int argc, char **argv){
       }
     //Not enough arguments supplied to run the program right
     if(argc < 4){
-        fprintf(stdout, "Not enough arguments supplied to run the client. NEED: 3, SUPPLIED: %d\n", argc-1);
+        printMessage(2, "Not enough arguments supplied to run the client. NEED: 3, SUPPLIED: %d\n", argc-1);
         fprintf(stdout, HELP_MENU);
         exit(EXIT_FAILURE);
     }
     else {
       userName = argv[optind];
       serverName = argv[optind + 1];
-      serverPort = argv[optind + 2];
-      printf("%s %s %s %d\n", userName, serverName, serverPort, optind);
+      serverPort = argv[optind + 2];      
 
       memset(&hints, 0, sizeof hints);
       hints.ai_family = AF_UNSPEC;
@@ -54,13 +53,13 @@ int main(int argc, char **argv){
       freeaddrinfo(servInfo);
 
       //or could use send(clientSocket, message, length of message, 0)
-      sendResult = write(clientSocket, "Hello world!", 12);
-      if (sendResult < 0) {
-        fprintf(stderr, "Failed to send message to server\n");
-      }
+    //   sendResult = write(clientSocket, "Hello world!", 12);
+    //   if (sendResult < 0) {
+    //     fprintf(stderr, "Failed to send message to server\n");
+    //   }
 
       //Initiate login procedure with the server before spawning a thread for handling stdin input
-      loginProcedure(clientSocket);
+      loginProcedure(clientSocket, userName);
 
       //Spawn a thread for handling input from stdin
       pthread_t stdinThread;
@@ -71,8 +70,55 @@ int main(int argc, char **argv){
     }
 }
 
-bool loginProcedure(int serverSocket){
-    
+//Function to set the color for the text and print the message
+//1 for verbose
+//2 for errors
+//3 for default
+void printMessage(int color, char *message, ...){
+    va_list argptr;
+    va_start(argptr,message);
+
+    if(color == 1){
+        fprintf(stdout, VERBOSE_COLOR);        
+    } else if(color == 2){
+        fprintf(stdout, ERRORS_COLOR);
+    } else{
+        fprintf(stdout, DEFAULT_COLOR);
+    }
+
+    vfprintf(stdout, message, argptr);
+}
+
+//Dynamically allocate memory as message from the server is being read in
+//one byte at a time
+char * readServerMessage(int serverSocket){
+    char *message = malloc(sizeof(char));
+    char *messagePointer = message;
+    int size = sizeof(char);
+    for(int i = 0; (i = read(serverSocket, messagePointer, 1)) == 1;){
+        message = realloc(message, ++size);
+        messagePointer = message + size - 1;
+        
+        //Check for carriage returns, if their then remove them and return the message
+        int length;
+        if((length = strlen(message)) > 5){
+            if(message[length-1] == '\n' && message[length-2] == '\r' && message[length-3] == '\n' && message[length-4] == '\r'){
+                memset(message + length - 4, '\0', 4);
+                return message;
+            }
+        }
+    }
+    return message;
+}
+
+bool loginProcedure(int serverSocket, char *userName){
+    write(serverSocket, "ME2U\r\n\r\n", strlen("ME2U\r\n\r\n"));
+    char *response = readServerMessage(serverSocket);
+    printMessage(2, "%s\n", response);
+    if(strcmp(response, "U2EM") == 0){
+        printMessage(1, "It's working so far\n");
+    }
+    return true;
 }
 
 void *stdinHandler(){

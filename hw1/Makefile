@@ -1,4 +1,4 @@
-CFLAGS:= -Wall -Werror -lpthread -pthread
+CFLAGS:= -Wall -Werror -lpthread -pthread -g
 
 client:
 	gcc $(CFLAGS) $@.c -o $@

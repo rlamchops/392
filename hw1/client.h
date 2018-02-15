@@ -13,6 +13,7 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include <stdbool.h>
+#include <stdarg.h>
 
 #define HELP_MENU "./client [-hv] NAME SERVER_IP SERVER_PORT\n \
 -h                         Displays this help menu, and returns EXIT_SUCCESS.\n \
@@ -20,6 +21,9 @@
 NAME                       This is the username to display when chatting.\n\
 SERVER_IP                  The ip address of the server to connect to.\n\
 SERVER_PORT                The port to connect to.\n"
+#define DEFAULT_COLOR "\x1B[0m"
+#define ERRORS_COLOR "\x1B[1;31m"
+#define VERBOSE_COLOR "\x1B[1;34m"
 
 char * userName;
 char * serverName;
@@ -27,7 +31,9 @@ char * serverPort;
 struct addrinfo hints, * servInfo, * addrResult;
 int gaiResult, clientSocket, sendResult;
 
-bool loginProcedure(int serverSocket);s
+void printMessage(int color, char *message, ...);
+char * readServerMessage(int serverSocket);
+bool loginProcedure(int serverSocket, char *userName);
 void serverHandler(int serverSocket);
 void *stdinHandler();
 
