@@ -59,7 +59,10 @@ int main(int argc, char **argv){
     //   }
 
       //Initiate login procedure with the server before spawning a thread for handling stdin input
-      loginProcedure(clientSocket, userName);
+      //If login failed then close the client
+      if(loginProcedure(clientSocket, userName) == false){
+          exit(EXIT_FAILURE);
+      }
 
       //Spawn a thread for handling input from stdin
       pthread_t stdinThread;
@@ -82,6 +85,8 @@ void printMessage(int color, char *message, ...){
         fprintf(stdout, VERBOSE_COLOR);        
     } else if(color == 2){
         fprintf(stdout, ERRORS_COLOR);
+        vfprintf(stderr, message, argptr);
+        return;
     } else{
         fprintf(stdout, DEFAULT_COLOR);
     }
@@ -91,6 +96,7 @@ void printMessage(int color, char *message, ...){
 
 //Dynamically allocate memory as message from the server is being read in
 //one byte at a time
+//Returns a malloced string which should be freed when it done being used
 char * readServerMessage(int serverSocket){
     char *message = malloc(sizeof(char));
     char *messagePointer = message;
@@ -111,13 +117,45 @@ char * readServerMessage(int serverSocket){
     return message;
 }
 
+//select on serversocket
+//if timeout occurred print out an error message and return
+int selectServer(int serverSocket, char *errorMessage, ...){
+    va_list argptr;
+    va_start(argptr, errorMessage);
+
+    fd_set rset;
+    FD_ZERO(&rset);
+    FD_SET(serverSocket, &rset);
+    struct timeval *t = malloc(sizeof(struct timeval));
+    memset((void *)t, '\0', sizeof(struct timeval));
+    t->tv_sec = 10;
+    t->tv_usec = 10000000;
+    int ret = select(1, &rset, NULL, NULL, t);
+    free(t);
+
+    if(ret == 0){
+        printMessage(2, "Timeout with server occurred during login, closing connection and client now.\n");
+    }
+
+    return ret;
+}
+
 bool loginProcedure(int serverSocket, char *userName){
     write(serverSocket, "ME2U\r\n\r\n", strlen("ME2U\r\n\r\n"));
+
+    int ret = selectServer(serverSocket, "Timeout with server occured during login with server, closing connection and client now.");
+
+    //timeout occurred
+    if(ret == 0){
+        return false;
+    }
+
     char *response = readServerMessage(serverSocket);
     printMessage(2, "%s\n", response);
     if(strcmp(response, "U2EM") == 0){
         printMessage(1, "It's working so far\n");
     }
+    free(response);
     return true;
 }
 
