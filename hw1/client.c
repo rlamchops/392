@@ -2,7 +2,6 @@
 
 int main(int argc, char **argv){
     int c;
-    writeMessageToServer(1, "IAM", "NOMI");
     while ((c = getopt (argc, argv, "hv")) != -1)
     switch (c)
       {
@@ -132,15 +131,11 @@ int selectServer(int serverSocket, char *errorMessage, ...){
     fd_set rset;
     FD_ZERO(&rset);
     FD_SET(serverSocket, &rset);
-    struct timeval *t = malloc(sizeof(struct timeval));
-    memset((void *)t, '\0', sizeof(struct timeval));
-    t->tv_sec = 10;
-    t->tv_usec = 10000000;
-    int ret = select(1, &rset, NULL, NULL, t);
-    free(t);
+    struct timeval t = {10, 0};
+    int ret = select(serverSocket+1, &rset, NULL, NULL, &t);
 
     if(ret == 0){
-        printMessage(2, "Timeout with server occurred during login, closing connection and client now.\n");
+        printMessage(2, errorMessage, argptr);
     }
 
     return ret;
@@ -188,11 +183,35 @@ bool loginProcedure(int serverSocket, char *userName){
     }
     free(response);
 
+    writeMessageToServer(serverSocket, "IAM", userName);
+
     if(selectServer(serverSocket, "Timeout with server occured during login with server, closing connection and client now.") == 0){
         return false;
     }
 
+    response = readServerMessage(serverSocket);
 
+    //server could return ETAKEN to indicate that the username was already taken
+    if(strcmp(response, "MAI") != 0){
+        printMessage(2, "Username may already be taken if verb is ETAKEN, closing connection and client now. VERB: %s", response);
+        return false;
+    }
+    free(response);
+
+    //select for MOTD
+    if(selectServer(serverSocket, "Timeout with server occured during login with server, closing connection and client now.") == 0){
+        return false;
+    }
+    response = readServerMessage(serverSocket);
+    char motd[5];
+    memset(motd, '\0', 5);
+    strncpy(motd, response, 4);
+    if(strcmp(motd, "MOTD") != 0){
+        printMessage(2, "Garbage received from the server, %s, now closing the connection and client.");
+        return false;
+    }
+    printMessage(0, "%s\n", response+5);
+    free(response);
 
     return true;
 }
