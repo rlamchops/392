@@ -9,6 +9,7 @@ int main(int argc, char **argv){
         fprintf(stdout, HELP_MENU);
         exit(EXIT_SUCCESS);
       case 'v':
+        #define VERBOSE
       break;
       }
     //Not enough arguments supplied to run the program right
@@ -82,7 +83,11 @@ void printMessage(int color, char *message, ...){
     va_start(argptr,message);
 
     if(color == 1){
-        fprintf(stdout, VERBOSE_COLOR);        
+        #ifdef VERBOSE
+        fprintf(stdout, VERBOSE_COLOR); 
+        vfprintf(stdout, message, argptr);
+        return;
+        #endif       
     } else if(color == 2){
         fprintf(stdout, ERRORS_COLOR);
         vfprintf(stderr, message, argptr);
@@ -151,7 +156,7 @@ bool loginProcedure(int serverSocket, char *userName){
     }
 
     char *response = readServerMessage(serverSocket);
-    printMessage(2, "%s\n", response);
+    
     if(strcmp(response, "U2EM") == 0){
         printMessage(1, "It's working so far\n");
     }
