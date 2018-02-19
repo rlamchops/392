@@ -222,19 +222,17 @@ void readBuffer(int fd) {
     buffer = malloc(1);
     buffer[0] = '\0';
   }
-  else {
-    int size = 1;
-    char last_char[1] = {0};
-    for(;read(fd, last_char, 1) == 1;) {
-      strncpy(buffer + size - 1, last_char, 1);
-      buffer = realloc(buffer, size + 1);
-      size++;
-      if (*last_char == '\n') {
-        break;
-      }
+  int size = 1;
+  char last_char[1] = {0};
+  for(;read(fd, last_char, 1) == 1;) {
+    if (*last_char == '\n') {
+      break;
     }
-    buffer[size-1] = '\0';
+    strncpy(buffer + size - 1, last_char, 1);
+    buffer = realloc(buffer, size + 1);
+    size++;
   }
+  buffer[size-1] = '\0';
 }
 
 void *stdinHandler(){
@@ -242,14 +240,11 @@ void *stdinHandler(){
     fd_set rset;
     FD_ZERO(&rset);
     FD_SET(0, &rset);
-    fprintf(stdout,"hi");
     while(true){
-        write(1, ">", 1);
         wait = select(FD_SETSIZE, &rset, NULL, NULL, NULL);
         if (wait == -1) {}
         else {
           int sendResult;
-          fprintf(stdout, "hi");
           if (FD_ISSET(0, &rset)) {
             //readBuffer allocates memory to buffer so msg can be read.
             readBuffer(0);
@@ -283,7 +278,7 @@ void *stdinHandler(){
               free(temp);
             }
             else {
-              printMessage(2, "Unknown command %s.\n", buffer);
+              printMessage(3, "Unknown command %s.\n", buffer);
             }
           }
         }
