@@ -33,7 +33,7 @@ SERVER_PORT                The port to connect to.\n"
 char * userName;
 char * serverName;
 char * serverPort;
-char * buffer;
+char * buffer = NULL;
 struct addrinfo hints, * servInfo, * addrResult;
 int gaiResult, clientSocket, sendResult;
 

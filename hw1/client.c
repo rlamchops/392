@@ -40,7 +40,7 @@ int main(int argc, char **argv){
           exit(1);
         }
         if (connect(clientSocket, addrResult->ai_addr, addrResult->ai_addrlen) == -1) {
-          fprintf(stdout, "Could not connect to %s.", addrResult->ai_addr->sa_data);
+          fprintf(stdout, "Could not connect to %s.\n", addrResult->ai_addr->sa_data);
           continue;
         }
         //if code gets here, then connected to a server
@@ -216,17 +216,40 @@ bool loginProcedure(int serverSocket, char *userName){
     return true;
 }
 
+//allocates just enough memory for the max message so far
+void readBuffer(int fd) {
+  if (buffer == NULL) {
+    buffer = malloc(1);
+    buffer[0] = '\0';
+  }
+  else {
+    int size = 1;
+    char last_char[1] = {0};
+    for(;read(fd, last_char, 1) == 1;) {
+      strncpy(buffer + size - 1, last_char, 1);
+      buffer = realloc(buffer, size + 1);
+      size++;
+      if (*last_char == '\n') {
+        break;
+      }
+    }
+    buffer[size-1] = '\0';
+  }
+}
+
 void *stdinHandler(){
     int wait = 0;
     fd_set rset;
     FD_ZERO(&rset);
     FD_SET(0, &rset);
+    fprintf(stdout,"hi");
     while(true){
         write(1, ">", 1);
         wait = select(FD_SETSIZE, &rset, NULL, NULL, NULL);
         if (wait == -1) {}
         else {
           int sendResult;
+          fprintf(stdout, "hi");
           if (FD_ISSET(0, &rset)) {
             //readBuffer allocates memory to buffer so msg can be read.
             readBuffer(0);
@@ -245,7 +268,7 @@ void *stdinHandler(){
               memset(temp, 0, strlen(buffer) + 1);
               strcpy(temp, buffer);
               //shift 3 char's over
-              memmove(temp, &temp[3], strlen((&temp[3]));
+              memmove(temp, &temp[3], strlen((&temp[3])));
               //construct message
               temp[0] = 'T';
               temp[1] = 'O';
@@ -254,6 +277,9 @@ void *stdinHandler(){
               temp[10] = '\r';
               temp[11] = '\n';
               sendResult = write(clientSocket, temp, strlen(temp));
+              if (sendResult != strlen(temp)) {
+                printMessage(2, "Did not send full message.\n");
+              }
               free(temp);
             }
             else {
