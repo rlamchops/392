@@ -34,6 +34,8 @@ int gaiResult, clientSocket, sendResult;
 
 void printMessage(int color, char *message, ...);
 char * readServerMessage(int serverSocket);
+int selectServer(int serverSocket, char *errorMessage, ...);
+void writeMessageToServer(int serverSocket, char * protocolTag, char * serverMessage, ...);
 bool loginProcedure(int serverSocket, char *userName);
 void serverHandler(int serverSocket);
 void *stdinHandler();

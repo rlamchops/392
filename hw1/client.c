@@ -2,6 +2,7 @@
 
 int main(int argc, char **argv){
     int c;
+    writeMessageToServer(1, "IAM", "NOMI");
     while ((c = getopt (argc, argv, "hv")) != -1)
     switch (c)
       {
@@ -145,22 +146,54 @@ int selectServer(int serverSocket, char *errorMessage, ...){
     return ret;
 }
 
+void writeMessageToServer(int serverSocket, char * protocolTag, char * serverMessage, ...){
+    va_list argptr;
+    va_start(argptr, serverMessage);
+    char *message = malloc(sizeof(*protocolTag));
+    char *fmt = malloc(sizeof(char));
+    memset(message, '\0', sizeof(*protocolTag));
+    strcpy(message, protocolTag);
+    strcat(message, " ");
+    int bytesNeeded = vsnprintf(fmt, sizeof(protocolTag), serverMessage, argptr);
+    if(bytesNeeded > 0){
+        fmt = realloc(fmt, sizeof(char) + bytesNeeded);
+        message = realloc(message, sizeof(message) + sizeof(fmt) + 5);
+        strcat(message, fmt);
+        strcat(message, "\r\n\r\n\0");
+    } else{
+        message = realloc(message, sizeof(message) + sizeof(fmt) + 5);
+        strcat(message, fmt);
+        strcat(message, "\r\n\r\n\0");
+    }
+    write(serverSocket, message, sizeof(message));
+
+    free(fmt);
+    free(message);
+}
+
 bool loginProcedure(int serverSocket, char *userName){
     write(serverSocket, "ME2U\r\n\r\n", strlen("ME2U\r\n\r\n"));
 
-    int ret = selectServer(serverSocket, "Timeout with server occured during login with server, closing connection and client now.");
-
     //timeout occurred
-    if(ret == 0){
+    if(selectServer(serverSocket, "Timeout with server occured during login with server, closing connection and client now.") == 0){
         return false;
     }
 
     char *response = readServerMessage(serverSocket);
     
-    if(strcmp(response, "U2EM") == 0){
-        printMessage(1, "It's working so far\n");
+    if(strcmp(response, "U2EM") != 0){
+        printMessage(2, "Error - garbage from the server, SERVER: %s", response);
+        free(response);
+        return false;
     }
     free(response);
+
+    if(selectServer(serverSocket, "Timeout with server occured during login with server, closing connection and client now.") == 0){
+        return false;
+    }
+
+
+
     return true;
 }
 
