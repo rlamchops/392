@@ -131,36 +131,88 @@ int selectServer(int serverSocket, char *errorMessage, ...){
     fd_set rset;
     FD_ZERO(&rset);
     FD_SET(serverSocket, &rset);
-    struct timeval *t = malloc(sizeof(struct timeval));
-    memset((void *)t, '\0', sizeof(struct timeval));
-    t->tv_sec = 10;
-    t->tv_usec = 10000000;
-    int ret = select(1, &rset, NULL, NULL, t);
-    free(t);
+    struct timeval t = {10, 0};
+    int ret = select(serverSocket+1, &rset, NULL, NULL, &t);
 
     if(ret == 0){
-        printMessage(2, "Timeout with server occurred during login, closing connection and client now.\n");
+        printMessage(2, errorMessage, argptr);
     }
 
     return ret;
 }
 
+void writeMessageToServer(int serverSocket, char * protocolTag, char * serverMessage, ...){
+    va_list argptr;
+    va_start(argptr, serverMessage);
+    char *message = malloc(sizeof(*protocolTag));
+    char *fmt = malloc(sizeof(char));
+    memset(message, '\0', sizeof(*protocolTag));
+    strcpy(message, protocolTag);
+    strcat(message, " ");
+    int bytesNeeded = vsnprintf(fmt, sizeof(protocolTag), serverMessage, argptr);
+    if(bytesNeeded > 0){
+        fmt = realloc(fmt, sizeof(char) + bytesNeeded);
+        message = realloc(message, sizeof(message) + sizeof(fmt) + 5);
+        strcat(message, fmt);
+        strcat(message, "\r\n\r\n\0");
+    } else{
+        message = realloc(message, sizeof(message) + sizeof(fmt) + 5);
+        strcat(message, fmt);
+        strcat(message, "\r\n\r\n\0");
+    }
+    write(serverSocket, message, sizeof(message));
+
+    free(fmt);
+    free(message);
+}
+
 bool loginProcedure(int serverSocket, char *userName){
     write(serverSocket, "ME2U\r\n\r\n", strlen("ME2U\r\n\r\n"));
 
-    int ret = selectServer(serverSocket, "Timeout with server occured during login with server, closing connection and client now.");
-
     //timeout occurred
-    if(ret == 0){
+    if(selectServer(serverSocket, "Timeout with server occured during login with server, closing connection and client now.") == 0){
         return false;
     }
 
     char *response = readServerMessage(serverSocket);
 
-    if(strcmp(response, "U2EM") == 0){
-        printMessage(1, "It's working so far\n");
+    if(strcmp(response, "U2EM") != 0){
+        printMessage(2, "Error - garbage from the server, SERVER: %s", response);
+        free(response);
+        return false;
     }
     free(response);
+
+    writeMessageToServer(serverSocket, "IAM", userName);
+
+    if(selectServer(serverSocket, "Timeout with server occured during login with server, closing connection and client now.") == 0){
+        return false;
+    }
+
+    response = readServerMessage(serverSocket);
+
+    //server could return ETAKEN to indicate that the username was already taken
+    if(strcmp(response, "MAI") != 0){
+        printMessage(2, "Username may already be taken if verb is ETAKEN, closing connection and client now. VERB: %s", response);
+        return false;
+    }
+    free(response);
+
+    //select for MOTD
+    if(selectServer(serverSocket, "Timeout with server occured during login with server, closing connection and client now.") == 0){
+        return false;
+    }
+    response = readServerMessage(serverSocket);
+    char motd[5];
+    memset(motd, '\0', 5);
+    strncpy(motd, response, 4);
+    if(strcmp(motd, "MOTD") != 0){
+        printMessage(2, "Garbage received from the server, %s, now closing the connection and client.");
+        return false;
+    }
+    printMessage(0, "%s\n", response+5);
+    free(response);
+
     return true;
 }
 

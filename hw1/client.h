@@ -4,11 +4,11 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
-#include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/time.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <pthread.h>
@@ -39,6 +39,8 @@ int gaiResult, clientSocket, sendResult;
 
 void printMessage(int color, char *message, ...);
 char * readServerMessage(int serverSocket);
+int selectServer(int serverSocket, char *errorMessage, ...);
+void writeMessageToServer(int serverSocket, char * protocolTag, char * serverMessage, ...);
 bool loginProcedure(int serverSocket, char *userName);
 void serverHandler(int serverSocket);
 void *stdinHandler();
