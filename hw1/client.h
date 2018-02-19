@@ -22,6 +22,10 @@
 NAME                       This is the username to display when chatting.\n\
 SERVER_IP                  The ip address of the server to connect to.\n\
 SERVER_PORT                The port to connect to.\n"
+#define HELP_MESSAGE "/help               Displays this help message\n \
+/listu               List all online users\n \
+/logout              Logout and exit from ME2U\n \
+/chat <to> <msg>     Opens a chat window to send <msg> to <to>\n"
 #define DEFAULT_COLOR "\x1B[0m"
 #define ERRORS_COLOR "\x1B[1;31m"
 #define VERBOSE_COLOR "\x1B[1;34m"
@@ -29,6 +33,7 @@ SERVER_PORT                The port to connect to.\n"
 char * userName;
 char * serverName;
 char * serverPort;
+char * buffer;
 struct addrinfo hints, * servInfo, * addrResult;
 int gaiResult, clientSocket, sendResult;
 

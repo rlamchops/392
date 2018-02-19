@@ -21,7 +21,7 @@ int main(int argc, char **argv){
     else {
       userName = argv[optind];
       serverName = argv[optind + 1];
-      serverPort = argv[optind + 2];      
+      serverPort = argv[optind + 2];
 
       memset(&hints, 0, sizeof hints);
       hints.ai_family = AF_UNSPEC;
@@ -84,10 +84,10 @@ void printMessage(int color, char *message, ...){
 
     if(color == 1){
         #ifdef VERBOSE
-        fprintf(stdout, VERBOSE_COLOR); 
+        fprintf(stdout, VERBOSE_COLOR);
         vfprintf(stdout, message, argptr);
         return;
-        #endif       
+        #endif
     } else if(color == 2){
         fprintf(stdout, ERRORS_COLOR);
         vfprintf(stderr, message, argptr);
@@ -109,7 +109,7 @@ char * readServerMessage(int serverSocket){
     for(int i = 0; (i = read(serverSocket, messagePointer, 1)) == 1;){
         message = realloc(message, ++size);
         messagePointer = message + size - 1;
-        
+
         //Check for carriage returns, if their then remove them and return the message
         int length;
         if((length = strlen(message)) > 5){
@@ -156,7 +156,7 @@ bool loginProcedure(int serverSocket, char *userName){
     }
 
     char *response = readServerMessage(serverSocket);
-    
+
     if(strcmp(response, "U2EM") == 0){
         printMessage(1, "It's working so far\n");
     }
@@ -165,11 +165,50 @@ bool loginProcedure(int serverSocket, char *userName){
 }
 
 void *stdinHandler(){
+    int wait = 0;
+    fd_set rset;
+    FD_ZERO(&rset);
+    FD_SET(0, &rset);
     while(true){
-        fd_set rset;
-        FD_ZERO(&rset);
-        FD_SET(1, &rset);
-        select(1, &rset, NULL, NULL, NULL);
+        write(1, ">", 1);
+        wait = select(FD_SETSIZE, &rset, NULL, NULL, NULL);
+        if (wait == -1) {}
+        else {
+          int sendResult;
+          if (FD_ISSET(0, &rset)) {
+            //readBuffer allocates memory to buffer so msg can be read.
+            readBuffer(0);
+            if (strcmp("/help", buffer) == 0) {
+              printMessage(3, HELP_MESSAGE);
+            }
+            else if (strcmp("/listu", buffer) == 0) {
+              sendResult = write(clientSocket, "LISTU\r\n\r\n", 9);
+            }
+            else if (strcmp("/logout", buffer) == 0) {
+              sendResult = write(clientSocket, "BYE\r\n\r\n", 7);
+            }
+            else if (strncmp("/chat", buffer, 5) == 0) {
+              //the overall increase in memory needed is 1 byte
+              char * temp = malloc(strlen(buffer) + 1);
+              memset(temp, 0, strlen(buffer) + 1);
+              strcpy(temp, buffer);
+              //shift 3 char's over
+              memmove(temp, &temp[3], strlen((&temp[3]));
+              //construct message
+              temp[0] = 'T';
+              temp[1] = 'O';
+              temp[8] = '\r';
+              temp[9] = '\n';
+              temp[10] = '\r';
+              temp[11] = '\n';
+              sendResult = write(clientSocket, temp, strlen(temp));
+              free(temp);
+            }
+            else {
+              printMessage(2, "Unknown command %s.\n", buffer);
+            }
+          }
+        }
     }
     exit(EXIT_SUCCESS);
 }
