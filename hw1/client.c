@@ -106,8 +106,11 @@ char * readServerMessage(int serverSocket){
     char *message = malloc(sizeof(char));
     char *messagePointer = message;
     int size = sizeof(char);
+    message[size-1] = '\0';
     for(int i = 0; (i = read(serverSocket, messagePointer, 1)) == 1;){
-        message = realloc(message, ++size);
+        size++;
+        message = realloc(message, size);
+        message[size-1] = '\0';
         messagePointer = message + size - 1;
 
         //Check for carriage returns, if their then remove them and return the message
@@ -170,14 +173,14 @@ bool loginProcedure(int serverSocket, char *userName){
     write(serverSocket, "ME2U\r\n\r\n", strlen("ME2U\r\n\r\n"));
 
     //timeout occurred
-    if(selectServer(serverSocket, "Timeout with server occured during login with server, closing connection and client now.") == 0){
+    if(selectServer(serverSocket, "Timeout with server occured during login, closing connection and client now.\n") == 0){
         return false;
     }
 
     char *response = readServerMessage(serverSocket);
 
     if(strcmp(response, "U2EM") != 0){
-        printMessage(2, "Error - garbage from the server, SERVER: %s", response);
+        printMessage(2, "Error - garbage from the server, SERVER: %s\n", response);
         free(response);
         return false;
     }
@@ -185,7 +188,7 @@ bool loginProcedure(int serverSocket, char *userName){
 
     writeMessageToServer(serverSocket, "IAM", userName);
 
-    if(selectServer(serverSocket, "Timeout with server occured during login with server, closing connection and client now.") == 0){
+    if(selectServer(serverSocket, "Timeout with server occured during login, closing connection and client now.\n") == 0){
         return false;
     }
 
@@ -193,13 +196,13 @@ bool loginProcedure(int serverSocket, char *userName){
 
     //server could return ETAKEN to indicate that the username was already taken
     if(strcmp(response, "MAI") != 0){
-        printMessage(2, "Username may already be taken if verb is ETAKEN, closing connection and client now. VERB: %s", response);
+        printMessage(2, "Username may already be taken if verb is ETAKEN, closing connection and client now. VERB: %s\n", response);
         return false;
     }
     free(response);
 
     //select for MOTD
-    if(selectServer(serverSocket, "Timeout with server occured during login with server, closing connection and client now.") == 0){
+    if(selectServer(serverSocket, "Timeout with server occured during login, closing connection and client now.\n") == 0){
         return false;
     }
     response = readServerMessage(serverSocket);
@@ -207,7 +210,7 @@ bool loginProcedure(int serverSocket, char *userName){
     memset(motd, '\0', 5);
     strncpy(motd, response, 4);
     if(strcmp(motd, "MOTD") != 0){
-        printMessage(2, "Garbage received from the server, %s, now closing the connection and client.");
+        printMessage(2, "Garbage received from the server, %s, now closing the connection and client.\n");
         return false;
     }
     printMessage(0, "%s\n", response+5);
