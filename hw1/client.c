@@ -297,21 +297,8 @@ void selectHandler(int serverSocket){
             memset(verb, '\0', 6);
             strncpy(verb, response, 5);
 
-            //list users case, only 5 letter protocol verb
-            if(strcmp(verb, "UTSIL") == 0){
-                printMessage(0, "User List: %s\n", response+6);
-            }
-
-            //check to see if its a 3 letter protocol verb
-            verb[3] = '\0';
-            if(strcmp(verb, "EYB") == 0){
-                printMessage(0, "Server is closing connection now, now closing client and chats and exiting program.\n");
-                close(serverSocket);
-                // TODO close all chats nicely
-                exit(EXIT_SUCCESS);
-            }
-
             free(response);
+            free(verb);
         }
 
         //stdin handling case
@@ -322,11 +309,46 @@ void selectHandler(int serverSocket){
             if (strcmp("/help", buffer) == 0) {
               printMessage(3, HELP_MESSAGE);
             }
+
+            //list users case
             else if (strcmp("/listu", buffer) == 0) {
-              sendResult = write(clientSocket, "LISTU\r\n\r\n", 9);
+                sendResult = write(clientSocket, "LISTU\r\n\r\n", 9);
+                if(selectServer(clientSocket, "Select timed out waiting for list user response, closing connection and client.") == 0){
+                    close(clientSocket);
+                    exit(EXIT_FAILURE);
+                }
+
+                READ_SERVER
+                char verb[6];
+                memset(verb, '\0', 6);
+                strncpy(verb, response, 5);
+                if(strcmp(verb, "UTSIL") == 0){
+                    printMessage(0, "User List: %s\n", response+6);
+                    free(response);
+                    continue;
+                }
+                printMessage(2, "Improper prefix was sent as response to list users, closing connection and client now.");
+                close(clientSocket);
+                exit(EXIT_FAILURE);
             }
+
+            //client is logging out case
             else if (strcmp("/logout", buffer) == 0) {
               sendResult = write(clientSocket, "BYE\r\n\r\n", 7);
+              if(selectServer(clientSocket, "Select on server while telling the server the client is logging out timed out, closing server connection and closing client now.\n") == 0){
+                  close(clientSocket);
+                  exit(EXIT_FAILURE);
+              }
+              READ_SERVER
+              if(strcmp(response, "EYB") != 0){
+                  free(response);
+                  close(clientSocket);
+                  printMessage(2, "Garbage from server was sent back while logging out, closing server connection and closing client now.\n");
+                  exit(EXIT_FAILURE);
+              }
+              free(response);
+              close(clientSocket);
+              exit(EXIT_SUCCESS);
             }
             else if (strncmp("/chat ", buffer, 6) == 0) {
               //first need to verify that this /chat request is valid
