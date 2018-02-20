@@ -17,9 +17,9 @@
 #include <stdarg.h>
 
 struct chat{
-	int fd;
-	int fdChat;
-	int PID;
+	int fd1;
+	int fd2;
+	int pid;
 	char *name;
 	struct chat *next;
 	struct chat *prev;
@@ -46,7 +46,7 @@ SERVER_PORT                The port to connect to.\n"
             close(serverSocket);\
             exit(EXIT_SUCCESS);\
         }
-#define XTERM(offset, name, fd, auditFD, n) char *arg[15]; \
+#define XTERM(offset, name, fd) char *arg[15]; \
 	arg[14] = NULL; \
 	for(int i = 0; i < 15; i++){ \
 		arg[i] = malloc(MAX_INPUT); \

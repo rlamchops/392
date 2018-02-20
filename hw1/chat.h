@@ -1,7 +1,7 @@
 #define _GNU_SOURCE
 
-#include "sfwrite.h"
-//#include <stdio.h>
+// #include "sfwrite.h"
+#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -19,3 +19,4 @@
 #include <sys/epoll.h>
 
 char * buffer = NULL;
+void readBuffer(int fd);

@@ -2,14 +2,17 @@
 
 int main(int argc, char * argv[]) {
   //  ./chat <FD>
+  //it's up to the client to format FROM <from> <msg>\r\n\r\n into ><msg>
+  //and <<msg> into TO <to> <msg>\r\n\r\n
   int fd = atoi(argv[1]);
   fd_set set;
   FD_ZERO(&set);
   FD_SET(fd, &set);
   FD_SET(0, &set);
   while (1) {
-    wait = select(FD_SETSIZE, &set, NULL, NULL, NULL);
-    if (wait == -1) {}
+    write(1, "<", 1);
+    int ret = select(FD_SETSIZE, &set, NULL, NULL, NULL);
+    if (ret == -1) {}
     else {
       if (FD_ISSET(0, &set)) {
         readBuffer(0);
@@ -21,11 +24,11 @@ int main(int argc, char * argv[]) {
         }
         else {
           write(fd, buffer, strlen(buffer));
+          // write(1, "\n", 1);
         }
       }
       else if (FD_ISSET(fd, &set)) {
-        fprintf(stdout, "<");
-        fprintf(stdout, buffer);
+        write(1, buffer, strlen(buffer));
       }
     }
   }

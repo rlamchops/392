@@ -353,28 +353,41 @@ void selectHandler(int serverSocket){
             else if (strncmp("/chat ", buffer, 6) == 0) {
               //first need to verify that this /chat request is valid
               if (verifyChat(buffer)) {
-                //the overall increase in memory needed is 1 byte
-                char * temp = malloc(strlen(buffer) + 1);
-                memset(temp, 0, strlen(buffer) + 1);
-                strcpy(temp, buffer);
-                //shift 3 char's over
-                memmove(temp, &temp[3], strlen((&temp[3])));
-                //construct message
-                temp[0] = 'T';
-                temp[1] = 'O';
-                temp[8] = '\r';
-                temp[9] = '\n';
-                temp[10] = '\r';
-                temp[11] = '\n';
-                sendResult = write(clientSocket, temp, strlen(temp));
-                if (sendResult != strlen(temp)) {
-                  printMessage(2, "Did not send full message.\n");
-                }
-                free(temp);
+                //buffer[6] is where the username begins
+                writeMessageToServer(clientSocket, "TO", &buffer[6]);
+                //should wait for OT here
 
-                //create XTERM and IPC
-                int socketPair[2];
-                socketpair(AF_UNIX, SOCK_STREAM, 0, socketPair);
+                //create XTERM and IPC if OT is received
+                char * targetName = getUsername(buffer);
+                char * temp = getMessage(buffer);
+                bool activeWindow = false;
+                //but first check if a window with this person is already open
+                for (chat * iterator = head; iterator != NULL; iterator=iterator->next) {
+                  if (strcmp(iterator->name, targetName) == 0) {
+                      if (waitpid(iterator->pid, NULL, WNOHANG) != 0) {
+                        close(iterator->fd1);
+                        close(iterator->fd2);
+                        removeChat(iterator);
+                        break;
+                      }
+                      else {
+                        activeWindow = true;
+                        write(iterator->fd1, temp, strlen(temp));
+                        break;
+                      }
+                  }
+                }
+
+                if (!activeWindow) {
+                  int socketPair[2];
+                  socketpair(AF_UNIX, SOCK_STREAM, 0, socketPair);
+                  XTERM(rand() * 1000, NAME_HERE, socketPair[1]);
+                  addChat(NAME_HERE, socketPair[0], socketPair[1], PID);
+                  //send the chat the /chat contents
+                  write(socketPair[0], temp, strlen(temp));
+                }
+
+                free(targetName);
               }
               else {
                 printMessage(3, "Unknown command %s.\n", buffer);
@@ -385,4 +398,80 @@ void selectHandler(int serverSocket){
             }
         }
     }
+}
+//grab the username of the target
+//returns string that must be freed
+char * getUsername(char * buffer) {
+  char * temp = malloc(1);
+  buffer[0] = '\0';
+  int size = 1;
+  for (int a = 6; buffer[6] != ' '; a++) {
+    strncpy(temp + size - 1, &buffer[a], 1);
+    temp = realloc(temp, size + 1);
+    size++;
+  }
+  buffer[size-1] = '\0';
+}
+
+
+//grab the start of the message
+char * getMessage(char * buffer) {
+  char * ret = buffer;
+  for (int a = 6; buffer[a] != '\0'; a++) {
+    if (buffer[a] == ' ') {
+      return &buffer[a+1];
+    }
+  }
+  return NULL;
+}
+
+void addChat(char * name, int fd1, int fd2, int pid) {
+  if (head == NULL) {
+    head = malloc(sizeof(chat));
+    head->name = malloc(strlen(name) + 1);
+    strcpy(head->name, name);
+    head->name[strlen(name)] = '\0';
+    head->fd1 = fd1;
+    head->fd2 = fd2;
+    head->pid = pid;
+    head->next = NULL;
+    head->prev = NULL;
+  }
+  else {
+    char * temp = malloc(sizeof(chat));
+    temp->name = malloc(strlen(name) + 1);
+    strcpy(temp->name, name);
+    temp->name[strlen(name)] = '\0';
+    temp->fd1 = fd1;
+    temp->fd2 = fd2;
+    temp->pid = pid;
+    temp->next = head;
+    temp->prev = NULL;
+    head->prev = temp;
+    head = temp;
+  }
+}
+void removeChat(chat * toRemove) {
+  if ((toRemove->prev == NULL) && (toRemove->next == NULL)) {
+    free(toRemove->name);
+    free(toRemove);
+    head = NULL;
+  }
+  else if ((toRemove->prev == NULL) && (toRemove->next != NULL)) {
+    head = toRemove->next;
+    toRemove->next->prev = NULL;
+    free(toRemove->name);
+    free(toRemove);
+  }
+  else if ((toRemove->prev != NULL) && (toRemove->next == NULL)) {
+    toRemove->prev->next = NULL;
+    free(toRemove->name);
+    free(toRemove);
+  }
+  else {
+    toRemove->prev->next = toRemove->next;
+    toRemove->next->prev = toRemove->prev;
+    free(toRemove->name);
+    free(toRemove);
+  }
 }
