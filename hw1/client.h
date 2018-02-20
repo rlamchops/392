@@ -82,7 +82,6 @@ char * serverPort;
 char * buffer = NULL;
 struct addrinfo hints, * servInfo, * addrResult;
 int gaiResult, clientSocket, sendResult;
-pthread_t stdinThread;
 
 const char *prefixList[] = {"U2EM", "MAI", "ETAKEN", "MOTD", "UTSIL", "OT", "FROM", "EDNE", "EYB", "UOFF"};
 
@@ -91,7 +90,7 @@ char * readServerMessage(int serverSocket);
 int selectServer(int serverSocket, char *errorMessage, ...);
 void writeMessageToServer(int serverSocket, char * protocolTag, char * serverMessage, ...);
 bool loginProcedure(int serverSocket, char *userName);
-void serverHandler(int serverSocket);
-void *stdinHandler();
+void selectHandler(int serverSocket);
+int verifyChat(char * buffer);
 
 #endif
