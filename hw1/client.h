@@ -29,6 +29,12 @@ SERVER_PORT                The port to connect to.\n"
 #define DEFAULT_COLOR "\x1B[0m"
 #define ERRORS_COLOR "\x1B[1;31m"
 #define VERBOSE_COLOR "\x1B[1;34m"
+#define READ_SERVER char *response = readServerMessage(serverSocket); \
+        if(response == NULL){\
+            printMessage(2, "Server has sent garbage, now terminating connection and closing client.\n");\
+            close(serverSocket);\
+            exit(EXIT_SUCCESS);\
+        }
 
 char * userName;
 char * serverName;
@@ -36,6 +42,9 @@ char * serverPort;
 char * buffer = NULL;
 struct addrinfo hints, * servInfo, * addrResult;
 int gaiResult, clientSocket, sendResult;
+pthread_t stdinThread;
+
+const char *prefixList[] = {"U2EM", "MAI", "ETAKEN", "MOTD", "UTSIL", "OT", "FROM", "EDNE", "EYB", "UOFF"};
 
 void printMessage(int color, char *message, ...);
 char * readServerMessage(int serverSocket);

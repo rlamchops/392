@@ -8,8 +8,10 @@ int main(int argc, char **argv){
       case 'h':
         fprintf(stdout, HELP_MENU);
         exit(EXIT_SUCCESS);
+        break;
       case 'v':
         #define VERBOSE
+        break;
       break;
       }
     //Not enough arguments supplied to run the program right
@@ -65,8 +67,7 @@ int main(int argc, char **argv){
           exit(EXIT_FAILURE);
       }
 
-      //Spawn a thread for handling input from stdin
-      pthread_t stdinThread;
+      //Spawn a thread for handling input from stdin      
       pthread_create(&stdinThread, NULL, &stdinHandler, NULL);
 
       //Send this main thread to handle input from the server
@@ -85,9 +86,9 @@ void printMessage(int color, char *message, ...){
     if(color == 1){
         #ifdef VERBOSE
         fprintf(stdout, VERBOSE_COLOR);
-        vfprintf(stdout, message, argptr);
-        return;
+        vfprintf(stdout, message, argptr);        
         #endif
+        return;
     } else if(color == 2){
         fprintf(stdout, ERRORS_COLOR);
         vfprintf(stderr, message, argptr);
@@ -101,17 +102,35 @@ void printMessage(int color, char *message, ...){
 
 //Dynamically allocate memory as message from the server is being read in
 //one byte at a time
-//Returns a malloced string which should be freed when it done being used
+//Returns a malloced string which should be freed when it is done being used
 char * readServerMessage(int serverSocket){
     char *message = malloc(sizeof(char));
     char *messagePointer = message;
     int size = sizeof(char);
     message[size-1] = '\0';
+
+    bool properPrefix = false;
+
     for(int i = 0; (i = read(serverSocket, messagePointer, 1)) == 1;){
         size++;
         message = realloc(message, size);
         message[size-1] = '\0';
         messagePointer = message + size - 1;
+
+        //Check for proper prefix in server message
+        if(!properPrefix && (size-1 >  2 && size-1 < 7)){
+            for(int i = 0; i < sizeof(prefixList); i++){
+                if(strcmp(message, ((char *)prefixList[i])) == 0){
+                    properPrefix = true;
+                    break;
+                }
+            }
+        } 
+        //At this point message is larger than largest known prefix and is still not a proper prefix
+        //meaning the server has sent garbage
+        else if(!properPrefix && size-1 >= 7){
+            return NULL;
+        }
 
         //Check for carriage returns, if their then remove them and return the message
         int length;
@@ -122,10 +141,13 @@ char * readServerMessage(int serverSocket){
             }
         }
     }
-    return message;
+
+    //If it reaches this point then it means that the client finished reading 
+    //everything in the server socket and never saw a complete terminating sequence
+    return NULL;
 }
 
-//select on serversocket
+//select on serversocket with a timeout
 //if timeout occurred print out an error message and return
 int selectServer(int serverSocket, char *errorMessage, ...){
     va_list argptr;
@@ -177,7 +199,7 @@ bool loginProcedure(int serverSocket, char *userName){
         return false;
     }
 
-    char *response = readServerMessage(serverSocket);
+    READ_SERVER
 
     if(strcmp(response, "U2EM") != 0){
         printMessage(2, "Error - garbage from the server, SERVER: %s\n", response);
@@ -193,6 +215,11 @@ bool loginProcedure(int serverSocket, char *userName){
     }
 
     response = readServerMessage(serverSocket);
+        if(response == NULL){
+            printMessage(2, "Server has sent garbage, now terminating connection and closing client.\n");
+            close(serverSocket);
+            exit(EXIT_SUCCESS);
+        }
 
     //server could return ETAKEN to indicate that the username was already taken
     if(strcmp(response, "MAI") != 0){
@@ -206,6 +233,11 @@ bool loginProcedure(int serverSocket, char *userName){
         return false;
     }
     response = readServerMessage(serverSocket);
+        if(response == NULL){
+            printMessage(2, "Server has sent garbage, now terminating connection and closing client.\n");
+            close(serverSocket);
+            exit(EXIT_SUCCESS);
+        }
     char motd[5];
     memset(motd, '\0', 5);
     strncpy(motd, response, 4);
@@ -291,7 +323,33 @@ void *stdinHandler(){
 
 void serverHandler(int serverSocket){
     fd_set rset;
-    FD_ZERO(&rset);
-    FD_SET(serverSocket, &rset);
-    select(1, &rset, NULL, NULL, NULL);
+    while(true){
+        FD_ZERO(&rset);
+        FD_SET(serverSocket, &rset);
+        select(serverSocket+1, &rset, NULL, NULL, NULL);
+
+        READ_SERVER
+
+        char *verb = malloc(sizeof(char) * 6);
+        memset(verb, '\0', 6);
+        strncpy(verb, response, 5);
+        
+        //list users case, only 5 letter protocol verb
+        if(strcmp(verb, "UTSIL") == 0){
+            printMessage(1, "VERBOSE: %s\n", response);
+            printMessage(0, "User List: %s\n", response+6);
+        }
+
+        //check to see if its a 3 letter protocol verb
+        verb[3] = '\0';
+        if(strcmp(verb, "EYB") == 0){
+            printMessage(0, "Server is closing connection now, now closing client and chats and exiting program.\n");
+            close(serverSocket);
+            pthread_cancel(stdinThread);
+            // TODO close all chats nicely
+            exit(EXIT_SUCCESS);
+        }
+        
+        free(response);
+    }
 }
