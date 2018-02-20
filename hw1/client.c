@@ -10,7 +10,7 @@ int main(int argc, char **argv){
         exit(EXIT_SUCCESS);
         break;
       case 'v':
-        #define VERBOSE
+        verbose = true;
         break;
       break;
       }
@@ -31,35 +31,29 @@ int main(int argc, char **argv){
 
       //protocol independent way to resolve address
       if ((gaiResult = getaddrinfo(serverName, serverPort, &hints, &servInfo)) != 0) {
-        fprintf(stderr, "Error resolving address %s.\n%s\n", serverName, gai_strerror(gaiResult));
-        exit(1);
+        printMessage(2, "Error resolving address %s.\n%s\n", serverName, gai_strerror(gaiResult));
+        exit(EXIT_FAILURE);
       }
 
       //getaddrinfo returns a linked list of candidates. need to try connecting to the entire list
       for (addrResult = servInfo; addrResult != NULL; addrResult = addrResult->ai_next) {
         if ((clientSocket = socket(addrResult->ai_family, addrResult->ai_socktype, addrResult->ai_protocol)) == -1) {
-          fprintf(stderr, "Failed to make client socket. Exiting...\n");
-          exit(1);
+          printMessage(2, "Failed to make client socket. Exiting...\n");
+          exit(EXIT_FAILURE);
         }
         if (connect(clientSocket, addrResult->ai_addr, addrResult->ai_addrlen) == -1) {
-          fprintf(stdout, "Could not connect to %s.\n", addrResult->ai_addr->sa_data);
+          printMessage(0, "Could not connect to %s.\n", addrResult->ai_addr->sa_data);
           continue;
         }
         //if code gets here, then connected to a server
         break;
       }
       if (addrResult == NULL) {
-        fprintf(stderr, "Failed to connect to target.\n");
-        exit(1);
+        printMessage(2, "Failed to connect to target.\n");
+        exit(EXIT_FAILURE);
       }
       //once connection is made, can now free the linked list
       freeaddrinfo(servInfo);
-
-      //or could use send(clientSocket, message, length of message, 0)
-    //   sendResult = write(clientSocket, "Hello world!", 12);
-    //   if (sendResult < 0) {
-    //     fprintf(stderr, "Failed to send message to server\n");
-    //   }
 
       //Initiate login procedure with the server before spawning a thread for handling stdin input
       //If login failed then close the client
@@ -84,13 +78,13 @@ void printMessage(int color, char *message, ...){
     va_start(argptr,message);
 
     if(color == 1){
-        #ifdef VERBOSE
-        fprintf(stdout, VERBOSE_COLOR);
-        vfprintf(stdout, message, argptr);
-        #endif
+        if(verbose){
+            fprintf(stdout, VERBOSE_COLOR);
+            vfprintf(stdout, message, argptr);
+        }
         return;
     } else if(color == 2){
-        fprintf(stdout, ERRORS_COLOR);
+        fprintf(stderr, ERRORS_COLOR);
         vfprintf(stderr, message, argptr);
         return;
     } else{
@@ -119,7 +113,7 @@ char * readServerMessage(int serverSocket){
 
         //Check for proper prefix in server message
         if(!properPrefix && (size-1 >  2 && size-1 < 7)){
-            for(int i = 0; i < sizeof(prefixList); i++){
+            for(int i = 0; i < sizeof(prefixList)/sizeof(prefixList[0]); i++){
                 if(strcmp(message, ((char *)prefixList[i])) == 0){
                     properPrefix = true;
                     break;
@@ -137,6 +131,7 @@ char * readServerMessage(int serverSocket){
         if((length = strlen(message)) > 5){
             if(message[length-1] == '\n' && message[length-2] == '\r' && message[length-3] == '\n' && message[length-4] == '\r'){
                 memset(message + length - 4, '\0', 4);
+                printMessage(1, "VERBOSE: %s\n", message);
                 return message;
             }
         }
@@ -187,12 +182,15 @@ void writeMessageToServer(int serverSocket, char * protocolTag, char * serverMes
     }
     write(serverSocket, message, sizeof(message));
 
+    printMessage(1, "VERBOSE: %s\n", message);
+
     free(fmt);
     free(message);
 }
 
 bool loginProcedure(int serverSocket, char *userName){
     write(serverSocket, "ME2U\r\n\r\n", strlen("ME2U\r\n\r\n"));
+    printMessage(1, "VERBOSE: ME2U\n");
 
     //timeout occurred
     if(selectServer(serverSocket, "Timeout with server occured during login, closing connection and client now.\n") == 0){
@@ -362,7 +360,6 @@ void serverHandler(int serverSocket){
 
         //list users case, only 5 letter protocol verb
         if(strcmp(verb, "UTSIL") == 0){
-            printMessage(1, "VERBOSE: %s\n", response);
             printMessage(0, "User List: %s\n", response+6);
         }
 

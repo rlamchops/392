@@ -75,6 +75,7 @@ SERVER_PORT                The port to connect to.\n"
 		free(arg[i]);\
 	} \
 
+bool verbose = false;
 char * userName;
 char * serverName;
 char * serverPort;
