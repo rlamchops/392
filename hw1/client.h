@@ -16,6 +16,17 @@
 #include <stdbool.h>
 #include <stdarg.h>
 
+struct chat{
+	int fd;
+	int fdChat;
+	int PID;
+	char *name;
+	struct chat *next;
+	struct chat *prev;
+};
+typedef struct chat chat;
+chat *head = NULL;
+
 #define HELP_MENU "./client [-hv] NAME SERVER_IP SERVER_PORT\n \
 -h                         Displays this help menu, and returns EXIT_SUCCESS.\n \
 -v                         Verbose print all incoming and outgoing protocol verbs & content.\n\

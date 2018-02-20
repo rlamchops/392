@@ -67,7 +67,7 @@ int main(int argc, char **argv){
           exit(EXIT_FAILURE);
       }
 
-      //Spawn a thread for handling input from stdin      
+      //Spawn a thread for handling input from stdin
       pthread_create(&stdinThread, NULL, &stdinHandler, NULL);
 
       //Send this main thread to handle input from the server
@@ -86,7 +86,7 @@ void printMessage(int color, char *message, ...){
     if(color == 1){
         #ifdef VERBOSE
         fprintf(stdout, VERBOSE_COLOR);
-        vfprintf(stdout, message, argptr);        
+        vfprintf(stdout, message, argptr);
         #endif
         return;
     } else if(color == 2){
@@ -125,7 +125,7 @@ char * readServerMessage(int serverSocket){
                     break;
                 }
             }
-        } 
+        }
         //At this point message is larger than largest known prefix and is still not a proper prefix
         //meaning the server has sent garbage
         else if(!properPrefix && size-1 >= 7){
@@ -142,7 +142,7 @@ char * readServerMessage(int serverSocket){
         }
     }
 
-    //If it reaches this point then it means that the client finished reading 
+    //If it reaches this point then it means that the client finished reading
     //everything in the server socket and never saw a complete terminating sequence
     return NULL;
 }
@@ -292,25 +292,35 @@ void *stdinHandler(){
             else if (strcmp("/logout", buffer) == 0) {
               sendResult = write(clientSocket, "BYE\r\n\r\n", 7);
             }
-            else if (strncmp("/chat", buffer, 5) == 0) {
-              //the overall increase in memory needed is 1 byte
-              char * temp = malloc(strlen(buffer) + 1);
-              memset(temp, 0, strlen(buffer) + 1);
-              strcpy(temp, buffer);
-              //shift 3 char's over
-              memmove(temp, &temp[3], strlen((&temp[3])));
-              //construct message
-              temp[0] = 'T';
-              temp[1] = 'O';
-              temp[8] = '\r';
-              temp[9] = '\n';
-              temp[10] = '\r';
-              temp[11] = '\n';
-              sendResult = write(clientSocket, temp, strlen(temp));
-              if (sendResult != strlen(temp)) {
-                printMessage(2, "Did not send full message.\n");
+            else if (strncmp("/chat ", buffer, 6) == 0) {
+              //first need to verify that this /chat request is valid
+              if (verifyChat(buffer)) {
+                //the overall increase in memory needed is 1 byte
+                char * temp = malloc(strlen(buffer) + 1);
+                memset(temp, 0, strlen(buffer) + 1);
+                strcpy(temp, buffer);
+                //shift 3 char's over
+                memmove(temp, &temp[3], strlen((&temp[3])));
+                //construct message
+                temp[0] = 'T';
+                temp[1] = 'O';
+                temp[8] = '\r';
+                temp[9] = '\n';
+                temp[10] = '\r';
+                temp[11] = '\n';
+                sendResult = write(clientSocket, temp, strlen(temp));
+                if (sendResult != strlen(temp)) {
+                  printMessage(2, "Did not send full message.\n");
+                }
+                free(temp);
+
+                //create XTERM and IPC
+                int socketPair[2];
+                socketpair(AF_UNIX, SOCK_STREAM, 0, socketPair);
               }
-              free(temp);
+              else {
+                printMessage(3, "Unknown command %s.\n", buffer);
+              }
             }
             else {
               printMessage(3, "Unknown command %s.\n", buffer);
@@ -319,6 +329,22 @@ void *stdinHandler(){
         }
     }
     exit(EXIT_SUCCESS);
+}
+
+//verifyChat makes sure that there is a target in the buffer
+int verifyChat(char * buffer) {
+  //start at buffer[6] because buffer[0-5] contains "/chat "
+  for(int a = 6; buffer[a] != '\0'; a++) {
+    //if there is an extra space or there was no content
+    if (a == 6 && ((buffer[a] == ' ') || (buffer[6] == '\0'))) {
+      return 0;
+    }
+    //name was found
+    else if (a > 6 && (buffer[a] == ' ')) {
+      return 1;
+    }
+  }
+  return 0;
 }
 
 void serverHandler(int serverSocket){
@@ -333,7 +359,7 @@ void serverHandler(int serverSocket){
         char *verb = malloc(sizeof(char) * 6);
         memset(verb, '\0', 6);
         strncpy(verb, response, 5);
-        
+
         //list users case, only 5 letter protocol verb
         if(strcmp(verb, "UTSIL") == 0){
             printMessage(1, "VERBOSE: %s\n", response);
@@ -349,7 +375,7 @@ void serverHandler(int serverSocket){
             // TODO close all chats nicely
             exit(EXIT_SUCCESS);
         }
-        
+
         free(response);
     }
 }
