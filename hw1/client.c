@@ -265,67 +265,6 @@ void readBuffer(int fd) {
   buffer[size-1] = '\0';
 }
 
-void *stdinHandler(){
-    int wait = 0;
-    fd_set rset;
-    FD_ZERO(&rset);
-    FD_SET(0, &rset);
-    while(true){
-        wait = select(FD_SETSIZE, &rset, NULL, NULL, NULL);
-        if (wait == -1) {}
-        else {
-          int sendResult;
-          if (FD_ISSET(0, &rset)) {
-            //readBuffer allocates memory to buffer so msg can be read.
-            readBuffer(0);
-            if (strcmp("/help", buffer) == 0) {
-              printMessage(3, HELP_MESSAGE);
-            }
-            else if (strcmp("/listu", buffer) == 0) {
-              sendResult = write(clientSocket, "LISTU\r\n\r\n", 9);
-            }
-            else if (strcmp("/logout", buffer) == 0) {
-              sendResult = write(clientSocket, "BYE\r\n\r\n", 7);
-            }
-            else if (strncmp("/chat ", buffer, 6) == 0) {
-              //first need to verify that this /chat request is valid
-              if (verifyChat(buffer)) {
-                //the overall increase in memory needed is 1 byte
-                char * temp = malloc(strlen(buffer) + 1);
-                memset(temp, 0, strlen(buffer) + 1);
-                strcpy(temp, buffer);
-                //shift 3 char's over
-                memmove(temp, &temp[3], strlen((&temp[3])));
-                //construct message
-                temp[0] = 'T';
-                temp[1] = 'O';
-                temp[8] = '\r';
-                temp[9] = '\n';
-                temp[10] = '\r';
-                temp[11] = '\n';
-                sendResult = write(clientSocket, temp, strlen(temp));
-                if (sendResult != strlen(temp)) {
-                  printMessage(2, "Did not send full message.\n");
-                }
-                free(temp);
-
-                //create XTERM and IPC
-                int socketPair[2];
-                socketpair(AF_UNIX, SOCK_STREAM, 0, socketPair);
-              }
-              else {
-                printMessage(3, "Unknown command %s.\n", buffer);
-              }
-            }
-            else {
-              printMessage(3, "Unknown command %s.\n", buffer);
-            }
-          }
-        }
-    }
-    exit(EXIT_SUCCESS);
-}
-
 //verifyChat makes sure that there is a target in the buffer
 int verifyChat(char * buffer) {
   //start at buffer[6] because buffer[0-5] contains "/chat "
