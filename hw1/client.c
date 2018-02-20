@@ -381,8 +381,8 @@ void selectHandler(int serverSocket){
                 if (!activeWindow) {
                   int socketPair[2];
                   socketpair(AF_UNIX, SOCK_STREAM, 0, socketPair);
-                  XTERM(rand() * 1000, NAME_HERE, socketPair[1]);
-                  addChat(NAME_HERE, socketPair[0], socketPair[1], PID);
+                  XTERM(rand() * 1000, targetName, socketPair[1]);
+                  addChat(targetName, socketPair[0], socketPair[1], PID);
                   //send the chat the /chat contents
                   write(socketPair[0], temp, strlen(temp));
                 }
@@ -403,14 +403,15 @@ void selectHandler(int serverSocket){
 //returns string that must be freed
 char * getUsername(char * buffer) {
   char * temp = malloc(1);
-  buffer[0] = '\0';
+  temp[0] = '\0';
   int size = 1;
   for (int a = 6; buffer[6] != ' '; a++) {
     strncpy(temp + size - 1, &buffer[a], 1);
     temp = realloc(temp, size + 1);
     size++;
   }
-  buffer[size-1] = '\0';
+  temp[size-1] = '\0';
+  return temp;
 }
 
 
