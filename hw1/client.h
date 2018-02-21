@@ -85,7 +85,7 @@ char * buffer = NULL;
 struct addrinfo hints, * servInfo, * addrResult;
 int gaiResult, clientSocket, sendResult;
 
-const char *prefixList[] = {"U2EM", "MAI", "ETAKEN", "MOTD", "UTSIL", "OT", "FROM", "EDNE", "EYB", "UOFF"};
+const char *prefixList[] = {"U2EM", "MAI", "ETAKEN", "MOTD", "UTSIL", "OT", "FROM", "EDNE", "EYB", "UOFF", "OT"};
 
 void printMessage(int color, char *message, ...);
 char * readServerMessage(int serverSocket);

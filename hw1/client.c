@@ -123,7 +123,7 @@ char * readServerMessage(int serverSocket){
             return NULL;
         }
 
-        //Check for carriage returns, if their then remove them and return the message
+        //Check for carriage returns, if there then remove them and return the message
         int length;
         if((length = strlen(message)) > 5){
             if(message[length-1] == '\n' && message[length-2] == '\r' && message[length-3] == '\n' && message[length-4] == '\r'){
@@ -166,18 +166,18 @@ void writeMessageToServer(int serverSocket, char * protocolTag, char * serverMes
     memset(message, '\0', sizeof(*protocolTag));
     strcpy(message, protocolTag);
     strcat(message, " ");
-    int bytesNeeded = vsnprintf(fmt, sizeof(protocolTag), serverMessage, argptr);
+    int bytesNeeded = vsnprintf(fmt, strlen(serverMessage)+1, serverMessage, argptr);
     if(bytesNeeded > 0){
         fmt = realloc(fmt, sizeof(char) + bytesNeeded);
-        message = realloc(message, sizeof(message) + sizeof(fmt) + 5);
+        message = realloc(message, strlen(message) + strlen(fmt) + 5);
         strcat(message, fmt);
         strcat(message, "\r\n\r\n\0");
     } else{
-        message = realloc(message, sizeof(message) + sizeof(fmt) + 5);
+        message = realloc(message, strlen(message) + strlen(fmt) + 5);
         strcat(message, fmt);
         strcat(message, "\r\n\r\n\0");
     }
-    write(serverSocket, message, sizeof(message));
+    write(serverSocket, message, strlen(message));
 
     printMessage(1, "VERBOSE: %s\n", message);
 
@@ -349,16 +349,26 @@ void selectHandler(int serverSocket){
               close(clientSocket);
               exit(EXIT_SUCCESS);
             }
+            //chatting to others
             else if (strncmp("/chat ", buffer, 6) == 0) {
               //first need to verify that this /chat request is valid
               if (verifyChat(buffer)) {
                 //buffer[6] is where the username begins
                 writeMessageToServer(clientSocket, "TO", &buffer[6]);
                 //should wait for OT here
-
-                //create XTERM and IPC if OT is received
+                if (selectServer(clientSocket, "Select on server while waiting for OT timed out. Try chatting again.\n") == 0) {
+                  continue;
+                }
                 char * targetName = getUsername(buffer);
                 char * temp = getMessage(buffer);
+                READ_SERVER
+                char verb[3] = {'\0', '\0', '\0'};
+                strncpy(verb, response, 2);
+                if ((strcmp(verb, "OT") != 0) || (strcmp(&response[3], targetName) != 0)) {
+                  printMessage(2, "Garbage from server after TO message. Try chatting again.\n");
+                  continue;
+                }
+                //create XTERM and IPC if OT is received
                 bool activeWindow = false;
                 //but first check if a window with this person is already open
                 for (chat * iterator = head; iterator != NULL; iterator=iterator->next) {
@@ -404,7 +414,7 @@ char * getUsername(char * buffer) {
   char * temp = malloc(1);
   temp[0] = '\0';
   int size = 1;
-  for (int a = 6; buffer[6] != ' '; a++) {
+  for (int a = 6; buffer[a] != ' '; a++) {
     strncpy(temp + size - 1, &buffer[a], 1);
     temp = realloc(temp, size + 1);
     size++;
