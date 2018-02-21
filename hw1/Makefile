@@ -9,5 +9,4 @@ chat:
 	gcc $(CFLAGS) $@.c -o $@
 
 clean:
-	rm -f client
-	rm -f chat
+	rm -f client chat

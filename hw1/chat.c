@@ -10,13 +10,23 @@ int main(int argc, char * argv[]) {
   FD_SET(fd, &set);
   FD_SET(0, &set);
   setbuf(stdout, NULL);
+
   while (1) {
+    FD_ZERO(&set);
+    FD_SET(fd, &set);
+    FD_SET(0, &set);
     write(1, "<", 1);
+
     int ret = select(FD_SETSIZE, &set, NULL, NULL, NULL);
+    //error case
     if (ret == -1) {
       write(1, "select failed\n", 14);
     }
+
     else {
+      write(1, "after select\n", 13);
+
+      //handle stdin input
       if (FD_ISSET(0, &set)) {
         write(1, "before read\n",12);
         readBuffer(0);
@@ -35,6 +45,8 @@ int main(int argc, char * argv[]) {
           // write(1, "\n", 1);
         }
       }
+
+      //input from client
       else if (FD_ISSET(fd, &set)) {
         readBuffer(fd);
         write(1, buffer, strlen(buffer));

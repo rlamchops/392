@@ -287,6 +287,9 @@ void selectHandler(int serverSocket){
     FD_SET(serverSocket, &rset);
     FD_SET(0, &rset);
     while(true){
+        FD_ZERO(&rset);
+        FD_SET(serverSocket, &rset);
+        FD_SET(0, &rset);
         for(chat *iterator = head; iterator != NULL; iterator = iterator->next){
           FD_SET(iterator->fd1, &rset);
         }
