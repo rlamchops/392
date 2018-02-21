@@ -355,10 +355,12 @@ void selectHandler(int serverSocket){
                     XTERM(name, socketPair[1]);
                     addChat(name, socketPair[0], socketPair[1], PID);
                     write(socketPair[0], message, strlen(message));
+                    write(socketPair[0], "\n", 1);
                 }
                 //Non-NULL means already a chat window
                 else{
                     write(person->fd1, message, strlen(message));
+                    write(person->fd1, "\n", 1);
                 }
 
                 free(name);
