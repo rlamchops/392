@@ -295,7 +295,61 @@ void selectHandler(int serverSocket){
 
             char *verb = malloc(sizeof(char) * 6);
             memset(verb, '\0', 6);
-            strncpy(verb, response, 5);
+            strncpy(verb, response, 4);
+
+            //FROM handler
+            if(strcmp(verb, "FROM") == 0){
+                if(sizeof(response) < 6){
+                    printMessage(2, "No name in the FROM message from the server, closing connection and exiting now.");
+                    close(serverSocket);
+                    exit(EXIT_FAILURE);
+                }
+                char *p = response+5;
+                char *name = malloc(sizeof(char));
+                int length = 1;
+                name[length-1] = '\0';
+                for(int i = 0; i < strlen(p) && p[i] != ' '; i++){
+                    strncpy(name+length-1, p+i, 1);
+                    length++;
+                    name = realloc(name, length);
+                    name[length-1] = '\0';
+                }
+                //Send the MORF to name now
+                writeMessageToServer(serverSocket, "MORF", name);
+                //Now to get the rest of the message
+                p = response + 5 + strlen(name) + 1;
+                char *message = malloc(sizeof(char));
+                length = 1;
+                message[length-1] = '\0';
+                for(int i = 0; i < strlen(p); i++){
+                    strncpy(message + length - 1, p + i, 1);
+                    length++;
+                    message = realloc(message, length);
+                    message[length-1] = '\0';
+                }
+                // TODO open xterm if it's not open already
+
+                free(name);                
+                free(message);
+            }
+
+            //UOFF user logged off handler
+            memset(verb, '\0', 6);
+            strncpy(verb, response, 4);
+            if(strcmp(verb, "UOFF") == 0){
+                char *p = response+5;
+                char *name = malloc(sizeof(char));
+                int length = 1;
+                name[length-1] = '\0';
+                for(int i = 0; i < strlen(p); i++){
+                    strncpy(name+length-1, p+i, 1);
+                    length++;
+                    name = realloc(name, length);
+                    name[length-1] = '\0';
+                }
+                // TODO find the existing xterm window and kill it
+                free(name);
+            }
 
             free(response);
             free(verb);
@@ -483,4 +537,19 @@ void removeChat(chat * toRemove) {
     free(toRemove->name);
     free(toRemove);
   }
+}
+
+struct chat * getChat(char *name){
+    if(head == NULL){
+        return NULL;
+    } else{
+        struct chat *pointer = head;
+        while(pointer != NULL){
+            if(strcmp(pointer->name, name) == 0){
+                return pointer;
+            }
+            pointer = pointer->next;
+        }       
+    }
+    return NULL;
 }
