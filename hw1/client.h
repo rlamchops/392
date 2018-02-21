@@ -16,6 +16,7 @@
 #include <semaphore.h>
 #include <stdbool.h>
 #include <stdarg.h>
+#include <errno.h>
 
 struct chat{
 	int fd1;
@@ -50,9 +51,9 @@ SERVER_PORT                The port to connect to.\n"
 #define MAX_INPUT 50
 #define XTERM(name, fd) char *arg[13]; \
 	arg[12] = NULL; \
-	for(int i = 0; i < 13; i++){ \
+	for(int i = 0; i < 12; i++){ \
 		arg[i] = malloc(MAX_INPUT); \
-		memset(arg[i], 0, MAX_INPUT); \
+		memset(arg[i], '\0', MAX_INPUT); \
 	}	\
 	strcat(arg[0], "xterm"); \
 	sprintf(arg[1], "-T"); \
@@ -66,12 +67,25 @@ SERVER_PORT                The port to connect to.\n"
 	sprintf(arg[9], "-e"); \
 	sprintf(arg[10], "./chat"); \
 	sprintf(arg[11], "%d", fd); \
+	for (int i = 0; i < 12; i++) {\
+		printf("%s ", arg[i]);\
+	}\
+	printf("\n");\
 	int PID = fork(); \
 	if(PID == 0){ \
-		execvp(arg[0], arg); \
+		for (int i = 0; i < 12; i++) {\
+			printf("%s ", arg[i]);\
+		}\
+		printf("\n");\
+		printf("%d", execvp("xterm", arg)); \
+		printf("%d", errno); \
+		for (int i = 0; i < 12; i++) {\
+			printf("%s ", arg[i]);\
+		}\
+		printf("\n");\
 		exit(EXIT_FAILURE); \
 	} \
-	for(int i = 0; i < 13; i++){ \
+	for(int i = 0; i < 12; i++){ \
 		free(arg[i]);\
 	} \
 

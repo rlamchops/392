@@ -434,6 +434,7 @@ void selectHandler(int serverSocket){
                         close(iterator->fd1);
                         close(iterator->fd2);
                         removeChat(iterator);
+                        printf("removed a chat");
                         break;
                       }
                       else {
@@ -450,7 +451,7 @@ void selectHandler(int serverSocket){
                   XTERM(targetName, socketPair[1]);
                   addChat(targetName, socketPair[0], socketPair[1], PID);
                   //send the chat the /chat contents
-                  write(socketPair[0], temp, strlen(temp));
+                  printf("%ld", write(socketPair[0], temp, strlen(temp)));
                 }
 
                 free(targetName);

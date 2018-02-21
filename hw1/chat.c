@@ -12,7 +12,9 @@ int main(int argc, char * argv[]) {
   while (1) {
     write(1, "<", 1);
     int ret = select(FD_SETSIZE, &set, NULL, NULL, NULL);
-    if (ret == -1) {}
+    if (ret == -1) {
+      write(1, "hi", 2);
+    }
     else {
       if (FD_ISSET(0, &set)) {
         readBuffer(0);
@@ -20,6 +22,7 @@ int main(int argc, char * argv[]) {
           continue;
         }
         if (strcmp("/close", buffer) == 0) {
+          close(fd);
           exit(EXIT_SUCCESS);
         }
         else {
@@ -28,6 +31,7 @@ int main(int argc, char * argv[]) {
         }
       }
       else if (FD_ISSET(fd, &set)) {
+        readBuffer(fd);
         write(1, buffer, strlen(buffer));
       }
     }
