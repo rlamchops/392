@@ -8,6 +8,7 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -46,6 +47,7 @@ SERVER_PORT                The port to connect to.\n"
             close(serverSocket);\
             exit(EXIT_SUCCESS);\
         }
+#define MAX_INPUT 50
 #define XTERM(offset, name, fd) char *arg[15]; \
 	arg[14] = NULL; \
 	for(int i = 0; i < 15; i++){ \
@@ -92,5 +94,9 @@ void writeMessageToServer(int serverSocket, char * protocolTag, char * serverMes
 bool loginProcedure(int serverSocket, char *userName);
 void selectHandler(int serverSocket);
 int verifyChat(char * buffer);
+char * getUsername(char * buffer);
+char * getMessage(char * buffer);
+void removeChat(chat * toRemove);
+void addChat(char * name, int fd1, int fd2, int pid);
 
 #endif

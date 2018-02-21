@@ -303,7 +303,6 @@ void selectHandler(int serverSocket){
 
         //stdin handling case
         else if(FD_ISSET(0, &rset)){
-            int sendResult;
             //readBuffer allocates memory to buffer so msg can be read.
             readBuffer(0);
             if (strcmp("/help", buffer) == 0) {
@@ -312,7 +311,7 @@ void selectHandler(int serverSocket){
 
             //list users case
             else if (strcmp("/listu", buffer) == 0) {
-                sendResult = write(clientSocket, "LISTU\r\n\r\n", 9);
+                write(clientSocket, "LISTU\r\n\r\n", 9);
                 if(selectServer(clientSocket, "Select timed out waiting for list user response, closing connection and client.") == 0){
                     close(clientSocket);
                     exit(EXIT_FAILURE);
@@ -334,7 +333,7 @@ void selectHandler(int serverSocket){
 
             //client is logging out case
             else if (strcmp("/logout", buffer) == 0) {
-              sendResult = write(clientSocket, "BYE\r\n\r\n", 7);
+              write(clientSocket, "BYE\r\n\r\n", 7);
               if(selectServer(clientSocket, "Select on server while telling the server the client is logging out timed out, closing server connection and closing client now.\n") == 0){
                   close(clientSocket);
                   exit(EXIT_FAILURE);
@@ -417,7 +416,6 @@ char * getUsername(char * buffer) {
 
 //grab the start of the message
 char * getMessage(char * buffer) {
-  char * ret = buffer;
   for (int a = 6; buffer[a] != '\0'; a++) {
     if (buffer[a] == ' ') {
       return &buffer[a+1];
@@ -439,7 +437,7 @@ void addChat(char * name, int fd1, int fd2, int pid) {
     head->prev = NULL;
   }
   else {
-    char * temp = malloc(sizeof(chat));
+    chat * temp = malloc(sizeof(chat));
     temp->name = malloc(strlen(name) + 1);
     strcpy(temp->name, name);
     temp->name[strlen(name)] = '\0';
