@@ -48,32 +48,30 @@ SERVER_PORT                The port to connect to.\n"
             exit(EXIT_SUCCESS);\
         }
 #define MAX_INPUT 50
-#define XTERM(offset, name, fd) char *arg[15]; \
-	arg[14] = NULL; \
-	for(int i = 0; i < 15; i++){ \
+#define XTERM(name, fd) char *arg[13]; \
+	arg[12] = NULL; \
+	for(int i = 0; i < 13; i++){ \
 		arg[i] = malloc(MAX_INPUT); \
 		memset(arg[i], 0, MAX_INPUT); \
 	}	\
 	strcat(arg[0], "xterm"); \
-	sprintf(arg[1], "-geometry"); \
-	sprintf(arg[2], "50x35+%d", offset); \
-	sprintf(arg[3], "-T"); \
-	sprintf(arg[4], "%s", name); \
-	sprintf(arg[5], "-bg");\
-	sprintf(arg[6], "DarkSlateGray");\
-	sprintf(arg[7], "-fa");\
-	sprintf(arg[8], "\'Monospace\'");\
-	sprintf(arg[9], "-fs");\
-	sprintf(arg[10], "11");\
-	sprintf(arg[11], "-e"); \
-	sprintf(arg[12], "./chat"); \
-	sprintf(arg[13], "%d", fd); \
+	sprintf(arg[1], "-T"); \
+	sprintf(arg[2], "%s", name); \
+	sprintf(arg[3], "-bg");\
+	sprintf(arg[4], "DarkSlateGray");\
+	sprintf(arg[5], "-fa");\
+	sprintf(arg[6], "\'Monospace\'");\
+	sprintf(arg[7], "-fs");\
+	sprintf(arg[8], "11");\
+	sprintf(arg[9], "-e"); \
+	sprintf(arg[10], "./chat"); \
+	sprintf(arg[11], "%d", fd); \
 	int PID = fork(); \
 	if(PID == 0){ \
 		execvp(arg[0], arg); \
 		exit(EXIT_FAILURE); \
 	} \
-	for(int i = 0; i < 15; i++){ \
+	for(int i = 0; i < 13; i++){ \
 		free(arg[i]);\
 	} \
 

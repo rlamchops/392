@@ -283,11 +283,14 @@ int verifyChat(char * buffer) {
 
 void selectHandler(int serverSocket){
     fd_set rset;
+    FD_ZERO(&rset);
+    FD_SET(serverSocket, &rset);
+    FD_SET(0, &rset);
     while(true){
-        FD_ZERO(&rset);
-        FD_SET(serverSocket, &rset);
-        FD_SET(0, &rset);
-        select(serverSocket+1, &rset, NULL, NULL, NULL);
+        for(chat *iterator = head; iterator != NULL; iterator = iterator->next){
+          FD_SET(iterator->fd1, &rset);
+        }
+        select(FD_SETSIZE, &rset, NULL, NULL, NULL);
 
         //server handling case
         if(FD_ISSET(serverSocket, &rset)){
@@ -329,7 +332,7 @@ void selectHandler(int serverSocket){
                 }
                 // TODO open xterm if it's not open already
 
-                free(name);                
+                free(name);
                 free(message);
             }
 
@@ -444,7 +447,7 @@ void selectHandler(int serverSocket){
                 if (!activeWindow) {
                   int socketPair[2];
                   socketpair(AF_UNIX, SOCK_STREAM, 0, socketPair);
-                  XTERM(rand() * 1000, targetName, socketPair[1]);
+                  XTERM(targetName, socketPair[1]);
                   addChat(targetName, socketPair[0], socketPair[1], PID);
                   //send the chat the /chat contents
                   write(socketPair[0], temp, strlen(temp));
@@ -549,7 +552,7 @@ struct chat * getChat(char *name){
                 return pointer;
             }
             pointer = pointer->next;
-        }       
+        }
     }
     return NULL;
 }
