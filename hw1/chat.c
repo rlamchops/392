@@ -41,7 +41,7 @@ int main(int argc, char * argv[]) {
         }
         else {
           write(fd, buffer, strlen(buffer));
-          free(buffer);
+          // free(buffer);
           // write(1, "\n", 1);
         }
       }
@@ -50,7 +50,7 @@ int main(int argc, char * argv[]) {
       else if (FD_ISSET(fd, &set)) {
         readBuffer(fd);
         write(1, buffer, strlen(buffer));
-        free(buffer);
+        // free(buffer);
       }
       else {
         write(1, "error\n", 6);
