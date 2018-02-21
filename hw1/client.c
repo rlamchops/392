@@ -458,7 +458,7 @@ void selectHandler(int serverSocket){
                 char verb[3] = {'\0', '\0', '\0'};
                 strncpy(verb, response, 2);
                 if ((strcmp(verb, "OT") != 0) || (strcmp(&response[3], targetName) != 0)) {
-                  printMessage(2, "Garbage from server after TO message. Try chatting again.\n");
+                  printMessage(2, "Garbage from server after TO message or was an EDNE indicating user does not exist. Try chatting again.\n");
                   continue;
                 }
                 //create XTERM and IPC if OT is received
