@@ -439,6 +439,7 @@ void selectHandler(int serverSocket){
               }
               free(response);
               close(clientSocket);
+              killChats();
               exit(EXIT_SUCCESS);
             }
             //chatting to others
@@ -515,7 +516,7 @@ void selectHandler(int serverSocket){
                     free(message);
                     free(wholeMessage);
                 }
-            }          
+            }
         }
     }
 }
@@ -590,22 +591,30 @@ void addChat(char * name, int fd1, int fd2, int pid) {
 }
 void removeChat(chat * toRemove) {
   if ((toRemove->prev == NULL) && (toRemove->next == NULL)) {
+    close(toRemove->fd1);
+    close(toRemove->fd2);
     free(toRemove->name);
     free(toRemove);
     head = NULL;
   }
   else if ((toRemove->prev == NULL) && (toRemove->next != NULL)) {
+    close(toRemove->fd1);
+    close(toRemove->fd2);
     head = toRemove->next;
     toRemove->next->prev = NULL;
     free(toRemove->name);
     free(toRemove);
   }
   else if ((toRemove->prev != NULL) && (toRemove->next == NULL)) {
+    close(toRemove->fd1);
+    close(toRemove->fd2);
     toRemove->prev->next = NULL;
     free(toRemove->name);
     free(toRemove);
   }
   else {
+    close(toRemove->fd1);
+    close(toRemove->fd2);
     toRemove->prev->next = toRemove->next;
     toRemove->next->prev = toRemove->prev;
     free(toRemove->name);
@@ -626,4 +635,17 @@ struct chat * getChat(char *name){
         }
     }
     return NULL;
+}
+
+void killChats() {
+  for(chat * temp = head; temp != NULL;) {
+    chat * next = temp->next;
+    free(temp->name);
+    kill(temp->pid, 9);
+    close(temp->fd1);
+    close(temp->fd2);
+    free(temp);
+    temp = next;
+  }
+  head = NULL;
 }
