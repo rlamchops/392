@@ -24,14 +24,9 @@ int main(int argc, char * argv[]) {
     }
 
     else {
-      write(1, "after select\n", 13);
-
       //handle stdin input
       if (FD_ISSET(0, &set)) {
-        write(1, "before read\n",12);
         readBuffer(0);
-        write(1, "after read\n", 11);
-        write(1, buffer, strlen(buffer));
         if (buffer[0] == '\0' || strlen(buffer) == 0 ) {
           continue;
         }
@@ -68,7 +63,6 @@ void readBuffer(int fd) {
   int size = 1;
   char last_char[1] = {0};
   for(;read(fd, last_char, 1) == 1;) {
-    write(1, last_char, 1);
     strncpy(buffer + size - 1, last_char, 1);
     buffer = realloc(buffer, size + 1);
     size++;
@@ -76,6 +70,5 @@ void readBuffer(int fd) {
       break;
     }
   }
-  write(1, "outside for\n", 12);
   buffer[size-1] = '\0';
 }
