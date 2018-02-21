@@ -109,7 +109,7 @@ char * readServerMessage(int serverSocket){
         messagePointer = message + size - 1;
 
         //Check for proper prefix in server message
-        if(!properPrefix && (size-1 >  2 && size-1 < 7)){
+        if(!properPrefix && (size-1 >  1 && size-1 < 7)){
             for(int i = 0; i < sizeof(prefixList)/sizeof(prefixList[0]); i++){
                 if(strcmp(message, ((char *)prefixList[i])) == 0){
                     properPrefix = true;
