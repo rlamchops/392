@@ -334,6 +334,19 @@ void selectHandler(int serverSocket){
                     message[length-1] = '\0';
                 }
                 // TODO open xterm if it's not open already
+                struct chat *person = getChat(name);
+                //NULL means no chat window open for said person
+                if(person == NULL){
+                    int socketPair[2];
+                    socketpair(AF_UNIX, SOCK_STREAM, 0, socketPair);
+                    XTERM(name, socketPair[1]);
+                    addChat(name, socketPair[0], socketPair[1], PID);
+                    printf("%ld", write(socketPair[0], message, strlen(message)));
+                }
+                //Non-NULL means already a chat window
+                else{
+                    write(person->fd1, message, strlen(message));
+                }
 
                 free(name);
                 free(message);
@@ -354,6 +367,15 @@ void selectHandler(int serverSocket){
                     name[length-1] = '\0';
                 }
                 // TODO find the existing xterm window and kill it
+                struct chat *person = getChat(name);
+                if(person == NULL){
+                    //nothing to do then
+                }
+                //else gotta kill this child/window
+                else{
+                    kill(person->pid, 9);
+                    removeChat(person);
+                }
                 free(name);
             }
 
@@ -469,8 +491,41 @@ void selectHandler(int serverSocket){
               printMessage(3, "Unknown command %s.\n", buffer);
             }
         }
+
+        else{
+            for(chat *iterator = head; iterator != NULL; iterator = iterator->next){
+                if(FD_ISSET(iterator->fd1, &rset)){
+                    char *message = readMessage(iterator->fd1);
+                    char *wholeMessage = malloc(strlen(message) + strlen(iterator->name) + 1);
+                    memset(wholeMessage, '\0', strlen(iterator->name) + strlen(message) + 1);
+                    strcpy(wholeMessage, iterator->name);
+                    strcat(wholeMessage, " ");
+                    strcat(wholeMessage, message);
+                    writeMessageToServer(serverSocket, "TO", wholeMessage);
+                    free(message);
+                    free(wholeMessage);
+                }
+            }          
+        }
     }
 }
+
+char *readMessage(int fd){
+    char *m = malloc(sizeof(char));
+    int size = 1;
+    m[size-1] = '\0';
+    for(int i = 0; (i = read(fd, m+size-1, 1)) == 1;){
+        if(m[size-1] == '\n'){
+            m[size-1] = '\0';
+            return m;
+        }
+        size++;
+        m = realloc(m, size);
+        m[size-1] = '\0';
+    }
+    return m;
+}
+
 //grab the username of the target
 //returns string that must be freed
 char * getUsername(char * buffer) {

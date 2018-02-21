@@ -100,5 +100,6 @@ char * getMessage(char * buffer);
 void removeChat(chat * toRemove);
 void addChat(char * name, int fd1, int fd2, int pid);
 struct chat * getChat(char *name);
+char *readMessage(int fd);
 
 #endif
