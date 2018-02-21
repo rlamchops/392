@@ -17,7 +17,6 @@ int main(int argc, char * argv[]) {
       write(1, "select failed\n", 14);
     }
     else {
-      write(1, "after select\n", 13);
       if (FD_ISSET(0, &set)) {
         write(1, "before read\n",12);
         readBuffer(0);
@@ -26,18 +25,23 @@ int main(int argc, char * argv[]) {
         if (buffer[0] == '\0' || strlen(buffer) == 0 ) {
           continue;
         }
-        if (strcmp("/close", buffer) == 0) {
+        if (strcmp("/close\n", buffer) == 0) {
           close(fd);
           exit(EXIT_SUCCESS);
         }
         else {
           write(fd, buffer, strlen(buffer));
+          free(buffer);
           // write(1, "\n", 1);
         }
       }
       else if (FD_ISSET(fd, &set)) {
         readBuffer(fd);
         write(1, buffer, strlen(buffer));
+        free(buffer);
+      }
+      else {
+        write(1, "error\n", 6);
       }
     }
   }

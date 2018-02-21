@@ -440,6 +440,7 @@ void selectHandler(int serverSocket){
                       else {
                         activeWindow = true;
                         write(iterator->fd1, temp, strlen(temp));
+                        write(iterator->fd1, "\n", 1);
                         break;
                       }
                   }

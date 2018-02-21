@@ -67,10 +67,6 @@ SERVER_PORT                The port to connect to.\n"
 	sprintf(arg[9], "-e"); \
 	sprintf(arg[10], "./chat"); \
 	sprintf(arg[11], "%d", fd); \
-	for (int i = 0; i < 12; i++) {\
-		printf("%s ", arg[i]);\
-	}\
-	printf("\n");\
 	int PID = fork(); \
 	if(PID == 0){ \
 		printf("%d", execvp("xterm", arg)); \
