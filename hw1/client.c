@@ -452,6 +452,7 @@ void selectHandler(int serverSocket){
                   addChat(targetName, socketPair[0], socketPair[1], PID);
                   //send the chat the /chat contents
                   printf("%ld", write(socketPair[0], temp, strlen(temp)));
+                  write(socketPair[0], "\n", 1);
                 }
 
                 free(targetName);

@@ -9,15 +9,20 @@ int main(int argc, char * argv[]) {
   FD_ZERO(&set);
   FD_SET(fd, &set);
   FD_SET(0, &set);
+  setbuf(stdout, NULL);
   while (1) {
     write(1, "<", 1);
     int ret = select(FD_SETSIZE, &set, NULL, NULL, NULL);
     if (ret == -1) {
-      write(1, "hi", 2);
+      write(1, "select failed\n", 14);
     }
     else {
+      write(1, "after select\n", 13);
       if (FD_ISSET(0, &set)) {
+        write(1, "before read\n",12);
         readBuffer(0);
+        write(1, "after read\n", 11);
+        write(1, buffer, strlen(buffer));
         if (buffer[0] == '\0' || strlen(buffer) == 0 ) {
           continue;
         }
@@ -46,12 +51,14 @@ void readBuffer(int fd) {
   int size = 1;
   char last_char[1] = {0};
   for(;read(fd, last_char, 1) == 1;) {
-    if (*last_char == '\n') {
-      break;
-    }
+    write(1, last_char, 1);
     strncpy(buffer + size - 1, last_char, 1);
     buffer = realloc(buffer, size + 1);
     size++;
+    if (last_char[0] == '\n') {
+      break;
+    }
   }
+  write(1, "outside for\n", 12);
   buffer[size-1] = '\0';
 }

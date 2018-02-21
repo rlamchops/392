@@ -73,15 +73,8 @@ SERVER_PORT                The port to connect to.\n"
 	printf("\n");\
 	int PID = fork(); \
 	if(PID == 0){ \
-		for (int i = 0; i < 12; i++) {\
-			printf("%s ", arg[i]);\
-		}\
-		printf("\n");\
 		printf("%d", execvp("xterm", arg)); \
 		printf("%d", errno); \
-		for (int i = 0; i < 12; i++) {\
-			printf("%s ", arg[i]);\
-		}\
 		printf("\n");\
 		exit(EXIT_FAILURE); \
 	} \
