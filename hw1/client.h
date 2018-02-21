@@ -45,6 +45,7 @@ SERVER_PORT                The port to connect to.\n"
 #define READ_SERVER char *response = readServerMessage(serverSocket); \
         if(response == NULL){\
             printMessage(2, "Server has sent garbage, now terminating connection and closing client.\n");\
+			killChats();\
             close(serverSocket);\
             exit(EXIT_SUCCESS);\
         }
