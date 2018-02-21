@@ -159,6 +159,16 @@ int selectServer(int serverSocket, char *errorMessage, ...){
 }
 
 void writeMessageToServer(int serverSocket, char * protocolTag, char * serverMessage, ...){
+    if(serverMessage == NULL){
+        printMessage(1, protocolTag);
+        char *m = malloc(strlen(protocolTag + 4));
+        strcpy(m, protocolTag);
+        strcpy(m+strlen(protocolTag), "\r\n\r\n");
+        write(serverSocket, m, strlen(protocolTag) + 4);
+        free(m);
+        return;
+    }
+
     va_list argptr;
     va_start(argptr, serverMessage);
     char *message = malloc(sizeof(*protocolTag));
