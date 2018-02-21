@@ -37,6 +37,7 @@ int main(int argc, char * argv[]) {
         }
         if (strcmp("/close\n", buffer) == 0) {
           close(fd);
+          free(buffer);
           exit(EXIT_SUCCESS);
         }
         else {

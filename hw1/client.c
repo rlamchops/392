@@ -78,11 +78,14 @@ void printMessage(int color, char *message, ...){
         if(verbose){
             fprintf(stdout, VERBOSE_COLOR);
             vfprintf(stdout, message, argptr);
+            fprintf(stdout, DEFAULT_COLOR);
         }
         return;
     } else if(color == 2){
         fprintf(stderr, ERRORS_COLOR);
         vfprintf(stderr, message, argptr);
+        fprintf(stdout, DEFAULT_COLOR);
+        fprintf(stderr, DEFAULT_COLOR);
         return;
     } else{
         fprintf(stdout, DEFAULT_COLOR);
@@ -351,7 +354,7 @@ void selectHandler(int serverSocket){
                     socketpair(AF_UNIX, SOCK_STREAM, 0, socketPair);
                     XTERM(name, socketPair[1]);
                     addChat(name, socketPair[0], socketPair[1], PID);
-                    printf("%ld", write(socketPair[0], message, strlen(message)));
+                    write(socketPair[0], message, strlen(message));
                 }
                 //Non-NULL means already a chat window
                 else{
@@ -470,7 +473,7 @@ void selectHandler(int serverSocket){
                         close(iterator->fd1);
                         close(iterator->fd2);
                         removeChat(iterator);
-                        printf("removed a chat");
+                        // printf("removed a chat");
                         break;
                       }
                       else {
@@ -488,7 +491,7 @@ void selectHandler(int serverSocket){
                   XTERM(targetName, socketPair[1]);
                   addChat(targetName, socketPair[0], socketPair[1], PID);
                   //send the chat the /chat contents
-                  printf("%ld", write(socketPair[0], temp, strlen(temp)));
+                  write(socketPair[0], temp, strlen(temp));
                   write(socketPair[0], "\n", 1);
                 }
 
