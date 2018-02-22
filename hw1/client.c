@@ -399,6 +399,7 @@ void selectHandler(int serverSocket){
                 write(clientSocket, "LISTU\r\n\r\n", 9);
                 if(selectServer(clientSocket, "Select timed out waiting for list user response, closing connection and client.") == 0){
                     close(clientSocket);
+                    killChats();
                     exit(EXIT_FAILURE);
                 }
 
