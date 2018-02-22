@@ -421,6 +421,7 @@ void selectHandler(int serverSocket){
               write(clientSocket, "BYE\r\n\r\n", 7);
               if(selectServer(clientSocket, "Select on server while telling the server the client is logging out timed out, closing server connection and closing client now.\n") == 0){
                   close(clientSocket);
+                  killChats();
                   exit(EXIT_FAILURE);
               }
               READ_SERVER
@@ -428,6 +429,7 @@ void selectHandler(int serverSocket){
                   free(response);
                   close(clientSocket);
                   printMessage(2, "Garbage from server was sent back while logging out, closing server connection and closing client now.\n");
+                  killChats();
                   exit(EXIT_FAILURE);
               }
               free(response);
