@@ -161,7 +161,7 @@ int selectServer(int serverSocket, char *errorMessage, ...){
     return ret;
 }
 
-void writeMessageToServer(int serverSocket, char * protocolTag, char * serverMessage, ...){
+void writeMessageToServer(int serverSocket, char * protocolTag, char * serverMessage){
     if(serverMessage == NULL){
         printMessage(1, protocolTag);
         char *m = malloc(strlen(protocolTag + 4));
@@ -171,25 +171,13 @@ void writeMessageToServer(int serverSocket, char * protocolTag, char * serverMes
         free(m);
         return;
     }
-
-    va_list argptr;
-    va_start(argptr, serverMessage);
-    char *message = malloc(sizeof(*protocolTag));
+    char *message = malloc(strlen(protocolTag) + strlen(serverMessage) + 5);
     char *fmt = malloc(sizeof(char));
-    memset(message, '\0', sizeof(*protocolTag));
+    memset(message, '\0', strlen(protocolTag) + strlen(serverMessage) + 5);
     strcpy(message, protocolTag);
     strcat(message, " ");
-    int bytesNeeded = vsnprintf(fmt, strlen(serverMessage)+1, serverMessage, argptr);
-    if(bytesNeeded > 0){
-        fmt = realloc(fmt, sizeof(char) + bytesNeeded);
-        message = realloc(message, strlen(message) + strlen(fmt) + 5);
-        strcat(message, fmt);
-        strcat(message, "\r\n\r\n\0");
-    } else{
-        message = realloc(message, strlen(message) + strlen(fmt) + 5);
-        strcat(message, fmt);
-        strcat(message, "\r\n\r\n\0");
-    }
+    strcat(message, serverMessage);
+    strcat(message, "\r\n\r\n");
     write(serverSocket, message, strlen(message));
 
     printMessage(1, "VERBOSE: %s\n", message);

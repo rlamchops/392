@@ -92,7 +92,7 @@ const char *prefixList[] = {"U2EM", "MAI", "ETAKEN", "MOTD", "UTSIL", "OT", "FRO
 void printMessage(int color, char *message, ...);
 char * readServerMessage(int serverSocket);
 int selectServer(int serverSocket, char *errorMessage, ...);
-void writeMessageToServer(int serverSocket, char * protocolTag, char * serverMessage, ...);
+void writeMessageToServer(int serverSocket, char * protocolTag, char * serverMessage);
 bool loginProcedure(int serverSocket, char *userName);
 void selectHandler(int serverSocket);
 int verifyChat(char * buffer);
