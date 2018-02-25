@@ -24,10 +24,12 @@ class Job:
         self.command = command
 
 class Client:
+    name = ''
     fd = None
     addr = None
 
-    def __init__(self, fd, addr):
+    def __init__(self, name, fd, addr):
+        self.name = name
         self.fd = fd
         self.addr = addr
 
@@ -35,6 +37,10 @@ jobQueue = queue.Queue()
 jobQueueLock = Lock()
 
 clientList = []
+
+port = None
+numwWorkers = None
+motd = None
 
 def parseArgs():
     parser = argparse.ArgumentParser()
@@ -49,10 +55,53 @@ def parseArgs():
 
     return int(args.PORT_NUMBER), int(args.NUM_WORKERS), args.MOTD
 
+#Helper method to read until \r\n\r\n
+def readSocket(fd):
+    message = ''
+    while True:
+        message += (fd.recv(1)).decode('ascii')
+        if len(message) > 5:
+            size = len(message)
+            if message[size-1] is '\n' and message[size-2] is '\r' and message[size-3] is '\n'\
+                    and message[size-4] is '\r':
+                message = message.replace('\r', '')
+                message = message.replace('\n', '')
+                return message
+
+def searchForClient(name):
+    for c in clientList:
+        if c.name == name:
+            return c
+    return None
+
 #Go through login procedure and if successful add to clientList the new client
-def loginClient(fd):
+def loginClient(fd, addr):
+    message = readSocket(fd)
+    if message != "ME2U":
+        print("ME2U was not sent by the client now closing connection with this client.")
+        fd.close()
+        return
+    fd.send(str.encode("U2EM\r\n\r\n"))
+    message = readSocket(fd)
+    if message[:3] != "IAM":
+        print("IAM was not sent by client closing client connection")
+        fd.close()
+        return
+    name = message[4:]
+    c = searchForClient(name)
+    if c is not None:
+        print("Name already taken, closing connection after sending ETAKEN")
+        fd.send(str.encode("ETAKEN\r\n\r\n"))
+        fd.close()
+        return
+
+    #send MAI and MOTD and then add this client to the client list
+    fd.send(str.encode("MAI\r\n\r\nMOTD " + motd + "\r\n\r\n"))
+    clientList.append(Client(name, fd, addr))
     return
 
+def clientCommands(clientSocket):
+    message = readSocket(clientSocket)
 
 def worker():
     while True:
@@ -62,7 +111,10 @@ def worker():
         jobQueueLock.release()
 
         if job.accept:
-            loginClient(job.fd)
+            loginClient(job.fd, job.addr)
+
+        elif job.client:
+            clientCommands(job.fd)
 
 
 if __name__ == "__main__":
@@ -72,11 +124,12 @@ if __name__ == "__main__":
     threadList = [None] * numwWorkers
     for i in range(0, numwWorkers):
         t = Thread(target=worker)
+        t.start()
         threadList[i] = t
 
     # set up listen socket
     serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    host = socket.gethostname()
+    host = ''
     serverSocket.bind((host, port))
     serverSocket.listen()
 
@@ -97,6 +150,10 @@ if __name__ == "__main__":
             #stdin command
             elif r is sys.stdin:
                 jobQueue.put(Job(True, False, False, None, None, sys.stdin.readline()))
+
+            #else it must be a client socket
+            else:
+                jobQueue.put(Job(False, True, False, r, None, None))
 
 
 
