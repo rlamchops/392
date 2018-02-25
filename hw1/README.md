@@ -13,3 +13,11 @@ client commands
 - /logout
 - /listu
 - /chat <to>
+
+### Server
+./server [-hv] PORT_NUMBER NUM_WORKERS MOTD
+-h            Displays help menu & returns EXIT_SUCCESS.
+-v            Verbose print all incoming and outgoing protocol verbs & content.
+PORT_NUMBER   Port number to listen on.
+NUM_WORKERS   Number of workers to spawn.
+MOTD          Message to display to the client when they connect.
