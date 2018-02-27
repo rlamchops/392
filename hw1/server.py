@@ -41,6 +41,9 @@ clientList = []
 port = None
 numwWorkers = None
 motd = None
+helpMessage = """/help                  Prints this help message
+/users                  Dumps list of currently logged in users to stdout
+/shutdown                  Shuts down server gracefully"""
 
 def parseArgs():
     parser = argparse.ArgumentParser()
@@ -149,6 +152,20 @@ if __name__ == "__main__":
 
             #stdin command
             elif r is sys.stdin:
+                currentCommand = sys.stdin.readline()
+                if currentCommand == "/help\n":
+                    print (helpMessage)
+                elif currentCommand == "/users\n":
+                    for x in clientList:
+                        print (x.name)
+                elif currentCommand == "/shutdown\n":
+                    # for x in clientList:
+                    #    x.fd.close()
+                    # jobQueueLock.acquire()
+                    # for y in jobQueue.items:
+                    #    y.fd.close()
+                    # jobQueueLock.release()
+                    exit()
                 jobQueue.put(Job(True, False, False, None, None, sys.stdin.readline()))
 
             #else it must be a client socket
