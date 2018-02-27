@@ -120,6 +120,27 @@ def worker():
         elif job.client:
             clientCommands(job.fd)
 
+        elif job.stdin:
+            if job.command == "/help\n":
+                print (helpMessage)
+            elif job.command == "/users\n":
+                if not clientList:
+                    print ("No one is currently online")
+                for x in clientList:
+                    print (x.name)
+            elif job.command == "/shutdown\n":
+                # for x in clientList:
+                #    x.fd.close()
+                # jobQueueLock.acquire()
+                # for y in jobQueue.items:
+                #    y.fd.close()
+                # jobQueueLock.release()
+                # for t in threadList:
+                #     t.exit()
+                sys.exit()
+            else:
+                print ("Unrecognizable command " + job.command)
+
 
 if __name__ == "__main__":
     port, numwWorkers, motd = parseArgs()
@@ -153,27 +174,7 @@ if __name__ == "__main__":
 
             #stdin command
             elif r is sys.stdin:
-                currentCommand = sys.stdin.readline()
-                if currentCommand == "/help\n":
-                    print (helpMessage)
-                elif currentCommand == "/users\n":
-                    if not clientList:
-                        print ("No one is currently online")
-                    for x in clientList:
-                        print (x.name)
-                elif currentCommand == "/shutdown\n":
-                    # for x in clientList:
-                    #    x.fd.close()
-                    # jobQueueLock.acquire()
-                    # for y in jobQueue.items:
-                    #    y.fd.close()
-                    # jobQueueLock.release()
-                    for t in threadList:
-                        t.join()
-                    sys.exit()
-                else:
-                    print ("Unrecognizable command " + currentCommand)
-                #jobQueue.put(Job(True, False, False, None, None, sys.stdin.readline()))
+                jobQueue.put(Job(True, False, False, None, None, sys.stdin.readline()))
 
             #else it must be a client socket
             else:
