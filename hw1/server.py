@@ -41,9 +41,10 @@ clientList = []
 port = None
 numwWorkers = None
 motd = None
-helpMessage = """/help                  Prints this help message
+helpMessage = """HELP DIALOGUE
+/help                   Prints this help message
 /users                  Dumps list of currently logged in users to stdout
-/shutdown                  Shuts down server gracefully"""
+/shutdown               Shuts down server gracefully"""
 
 def parseArgs():
     parser = argparse.ArgumentParser()
@@ -156,6 +157,8 @@ if __name__ == "__main__":
                 if currentCommand == "/help\n":
                     print (helpMessage)
                 elif currentCommand == "/users\n":
+                    if not clientList:
+                        print ("No one is currently online")
                     for x in clientList:
                         print (x.name)
                 elif currentCommand == "/shutdown\n":
@@ -165,8 +168,12 @@ if __name__ == "__main__":
                     # for y in jobQueue.items:
                     #    y.fd.close()
                     # jobQueueLock.release()
-                    exit()
-                jobQueue.put(Job(True, False, False, None, None, sys.stdin.readline()))
+                    for t in threadList:
+                        t.join()
+                    sys.exit()
+                else:
+                    print ("Unrecognizable command " + currentCommand)
+                #jobQueue.put(Job(True, False, False, None, None, sys.stdin.readline()))
 
             #else it must be a client socket
             else:
