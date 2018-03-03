@@ -1,4 +1,4 @@
-from threading import Thread, Lock
+from threading import Thread, Lock, Semaphore
 import argparse
 import socket
 import queue
@@ -10,15 +10,17 @@ class Job:
     client = False
     accept = False
 
+    name = None
     fd = None
     addr = None
 
     command = None
 
-    def __init__(self, stdin, client, accept, fd, addr, command):
+    def __init__(self, stdin, client, accept, name, fd, addr, command):
         self.stdin = stdin
         self.client = client
         self.accept = accept
+        self.name = name
         self.fd = fd
         self.addr = addr
         self.command = command
@@ -41,6 +43,7 @@ clientList = []
 port = None
 numwWorkers = None
 motd = None
+clientCommandSemaphore = Semaphore(0)
 helpMessage = """HELP DIALOGUE
 /help                   Prints this help message
 /users                  Dumps list of currently logged in users to stdout
@@ -64,7 +67,9 @@ def readSocket(fd):
     message = ''
     while True:
         message += (fd.recv(1)).decode('ascii')
-        if len(message) > 5:
+        if message == '':
+            return None
+        elif len(message) > 5:
             size = len(message)
             if message[size-1] is '\n' and message[size-2] is '\r' and message[size-3] is '\n'\
                     and message[size-4] is '\r':
@@ -84,17 +89,24 @@ def searchByFd(fd):
             return x
     return None
 
+def removeByFd(fd):
+    c = searchByFd(fd)
+    clientList.remove(c)
+    return
+
 #Go through login procedure and if successful add to clientList the new client
 def loginClient(fd, addr):
     message = readSocket(fd)
     if message != "ME2U":
         print("ME2U was not sent by the client now closing connection with this client.")
+        removeByFd(fd)
         fd.close()
         return
     fd.send(str.encode("U2EM\r\n\r\n"))
     message = readSocket(fd)
     if message[:3] != "IAM":
         print("IAM was not sent by client closing client connection")
+        removeByFd(fd)
         fd.close()
         return
     name = message[4:]
@@ -102,37 +114,37 @@ def loginClient(fd, addr):
     if c is not None:
         print("Name already taken, closing connection after sending ETAKEN")
         fd.send(str.encode("ETAKEN\r\n\r\n"))
+        removeByFd(fd)
         fd.close()
         return
 
     #send MAI and MOTD and then add this client to the client list
     fd.send(str.encode("MAI\r\n\r\nMOTD " + motd + "\r\n\r\n"))
-    clientList.append(Client(name, fd, addr))
+    searchByFd(fd).name = name
     return
 
-def clientCommands(clientSocket):
+def clientCommands(clientSocket, name, addr):
     message = readSocket(clientSocket)
-    print (message)
-    if message == "BYE":
+    clientCommandSemaphore.release()
+
+    #client closed socket suddenly so time to clean it up
+    if message == None:
+        c.fd.close()
+        return
+
+    elif message == "BYE":
         #send EYB to client
         clientSocket.send(str.encode("EYB\r\n\r\n"))
-        temp = searchByFd(clientSocket).name
-        # remove client from list
-        for a, b in enumerate(clientList):
-            if b.fd == clientSocket:
-                del clientList[a]
-                break
-        #send UOFF to others online
-        if clientList:
-            for x in clientList:
-                x.fd.send(str.encode("UOFF " + temp + "\r\n\r\n"))
-
+        clientSocket.close()
+        clientList.remove(searchByFd(clientSocket))
+        for client in clientList:
+            client.fd.send(str.encode("UOFF " + name + "\r\n\r\n"))
 
     elif message == "LISTU":
         temp = "UTSIL"
-        for x in clientList:
-            temp += (" " + x.name)
-        temp += "\r\n\r\n"
+        for client in clientList:
+            temp += (" " + client.name)
+        temp +=  "\r\n\r\n"
         clientSocket.send(str.encode(temp))
 
     elif message[:2] == "TO":
@@ -161,6 +173,7 @@ def clientCommands(clientSocket):
 
     else:
         print("Received garbage client command from " + clientSocket)
+        clientSocket.close()
 
 def worker():
     while True:
@@ -173,9 +186,10 @@ def worker():
             loginClient(job.fd, job.addr)
 
         elif job.client:
-            clientCommands(job.fd)
+            clientCommands(job.fd, job.name, job.addr)
 
         elif job.stdin:
+            print(job.command)
             if job.command == "/help\n":
                 print (helpMessage)
             elif job.command == "/users\n":
@@ -213,8 +227,6 @@ if __name__ == "__main__":
     serverSocket.bind((host, port))
     serverSocket.listen()
 
-    # empty list to store client sockets
-
     while True:
         inputs = [sys.stdin, serverSocket]
         for c in clientList:
@@ -225,15 +237,18 @@ if __name__ == "__main__":
             #time to accept a connection
             if r is serverSocket:
                 socket, addr = serverSocket.accept()
-                jobQueue.put(Job(False, False, True, socket, addr, None))
+                clientList.append(Client(None, socket, addr))
+                jobQueue.put(Job(False, False, True, None, socket, addr, None))
 
             #stdin command
             elif r is sys.stdin:
-                jobQueue.put(Job(True, False, False, None, None, sys.stdin.readline()))
+                jobQueue.put(Job(True, False, False, None, None, None, sys.stdin.readline()))
 
-            #else it must be a client socket
+            #else it must be a client socket, use semaphore to ensure the same exact job isn't being repeated across all threads
             else:
-                jobQueue.put(Job(False, True, False, r, None, None))
+                client = searchByFd(r)
+                jobQueue.put(Job(False, True, False, client.name, r, client.addr, None))
+                clientCommandSemaphore.acquire(blocking=True)
 
 
 
