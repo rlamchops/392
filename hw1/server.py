@@ -78,6 +78,12 @@ def searchForClient(name):
             return c
     return None
 
+def searchByFd(fd):
+    for x in clientList:
+        if x.fd == fd:
+            return x
+    return None
+
 #Go through login procedure and if successful add to clientList the new client
 def loginClient(fd, addr):
     message = readSocket(fd)
@@ -106,6 +112,55 @@ def loginClient(fd, addr):
 
 def clientCommands(clientSocket):
     message = readSocket(clientSocket)
+    print (message)
+    if message == "BYE":
+        #send EYB to client
+        clientSocket.send(str.encode("EYB\r\n\r\n"))
+        temp = searchByFd(clientSocket).name
+        # remove client from list
+        for a, b in enumerate(clientList):
+            if b.fd == clientSocket:
+                del clientList[a]
+                break
+        #send UOFF to others online
+        if clientList:
+            for x in clientList:
+                x.fd.send(str.encode("UOFF " + temp + "\r\n\r\n"))
+
+
+    elif message == "LISTU":
+        temp = "UTSIL"
+        for x in clientList:
+            temp += (" " + x.name)
+        temp += "\r\n\r\n"
+        clientSocket.send(str.encode(temp))
+
+    elif message[:2] == "TO":
+        #get the contents of the string
+        toArgs = message.split(maxsplit = 2)
+        #first check if correct # of args
+        if len(toArgs) != 3:
+            print("Received garbage client command from " + clientSocket)
+            return
+        #check if target exists
+        x = searchForClient(toArgs[1])
+        if x is not None:
+            toArgs[0] = "FROM"
+            temp2 = toArgs[1]
+            toArgs[1] = searchByFd(clientSocket).name
+            x.fd.send(str.encode(str.join(' ', toArgs) + "\r\n\r\n"))
+            #now wait for MORF
+            temp = readSocket(x.fd)
+            if temp != ("MORF " + toArgs[1]):
+                print("uh oh")
+            clientSocket.send(str.encode("OT " + temp2 + "\r\n\r\n"))
+
+        else:
+            clientSocket.send(str.encode("EDNE\r\n\r\n"))
+
+
+    else:
+        print("Received garbage client command from " + clientSocket)
 
 def worker():
     while True:
