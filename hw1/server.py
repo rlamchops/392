@@ -51,9 +51,13 @@ helpMessage = """HELP DIALOGUE
 /users                  Dumps list of currently logged in users to stdout
 /shutdown               Shuts down server gracefully"""
 
+verbose = False
+STANDARD_COLOR = '\x1b[1;34m'
+ERROR_COLOR = '\x1b[1;31m'
+
 def parseArgs():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-v', help='Verbose print all incoming and outgoing protocol verbs & content.')
+    parser.add_argument('-v', help='Verbose print all incoming and outgoing protocol verbs & content.', action='store_true')
     parser.add_argument('PORT_NUMBER', help='Port number to listen on.')
     parser.add_argument('NUM_WORKERS', help='Number of workers to spawn.')
     parser.add_argument('MOTD', help='Message to display to the client when they connect.')
@@ -61,6 +65,10 @@ def parseArgs():
 
     if not (args.PORT_NUMBER or args.NUM_WORKERS or args.MOTD):
         parser.error("No port number, number of workers, or message of the day was supplied.")
+
+    if args.v:
+        global verbose
+        verbose = True
 
     return int(args.PORT_NUMBER), int(args.NUM_WORKERS), args.MOTD
 
@@ -77,6 +85,7 @@ def readSocket(fd):
                     and message[size-4] is '\r':
                 message = message.replace('\r', '')
                 message = message.replace('\n', '')
+                printMessage(STANDARD_COLOR, message)
                 return message
 
 def searchForClient(name):
@@ -96,6 +105,10 @@ def removeByFd(fd):
     clientList.remove(c)
     return
 
+def printMessage(color, message):
+    if verbose:
+        print(color + "VERBOSE: " + message + '\x1b[0m')
+
 #Go through login procedure and if successful add to clientList the new client
 def loginClient(fd, addr):
     message = readSocket(fd)
@@ -105,6 +118,7 @@ def loginClient(fd, addr):
         fd.close()
         return
     fd.send(str.encode("U2EM\r\n\r\n"))
+    printMessage(STANDARD_COLOR, "U2EM\r\n\r\n")
     message = readSocket(fd)
     if message[:3] != "IAM":
         print("IAM was not sent by client closing client connection")
@@ -116,12 +130,15 @@ def loginClient(fd, addr):
     if c is not None:
         print("Name already taken, closing connection after sending ETAKEN")
         fd.send(str.encode("ETAKEN\r\n\r\n"))
+        printMessage(STANDARD_COLOR, "ETAKEN\r\n\r\n")
         removeByFd(fd)
         fd.close()
         return
 
     #send MAI and MOTD and then add this client to the client list
     fd.send(str.encode("MAI\r\n\r\nMOTD " + motd + "\r\n\r\n"))
+    printMessage(STANDARD_COLOR, "MAI\r\n\r\n")
+    printMessage(STANDARD_COLOR, "MOTD " + motd + "\r\n\r\n")
     searchByFd(fd).name = name
     return
 
@@ -137,10 +154,12 @@ def clientCommands(clientSocket, name, addr):
     elif message == "BYE":
         #send EYB to client
         clientSocket.send(str.encode("EYB\r\n\r\n"))
+        printMessage(STANDARD_COLOR, "EYB\r\n\r\n")
         clientSocket.close()
         clientList.remove(searchByFd(clientSocket))
         for client in clientList:
             client.fd.send(str.encode("UOFF " + name + "\r\n\r\n"))
+            printMessage(STANDARD_COLOR, "UOFF " + name + "\r\n\r\n")
 
     elif message == "LISTU":
         temp = "UTSIL"
@@ -148,13 +167,14 @@ def clientCommands(clientSocket, name, addr):
             temp += (" " + client.name)
         temp +=  "\r\n\r\n"
         clientSocket.send(str.encode(temp))
+        printMessage(STANDARD_COLOR, temp)
 
     elif message[:2] == "TO":
         #get the contents of the string
         toArgs = message.split(maxsplit = 2)
         #first check if correct # of args
         if len(toArgs) != 3:
-            print("Received garbage client command from " + clientSocket)
+            printMessage(ERROR_COLOR, "Received garbage client command from " + searchByFd(clientSocket).name)
             return
         #check if target exists
         x = searchForClient(toArgs[1])
@@ -162,19 +182,23 @@ def clientCommands(clientSocket, name, addr):
             toArgs[0] = "FROM"
             temp2 = toArgs[1]
             toArgs[1] = searchByFd(clientSocket).name
-            x.fd.send(str.encode(str.join(' ', toArgs) + "\r\n\r\n"))
+            toSend = str.join(' ', toArgs) + "\r\n\r\n"
+            x.fd.send(str.encode(toSend))
+            printMessage(STANDARD_COLOR, toSend)
             #now wait for MORF
             temp = readSocket(x.fd)
             if temp != ("MORF " + toArgs[1]):
-                print("uh oh")
+                printMessage(ERROR_COLOR, "uh oh")
             clientSocket.send(str.encode("OT " + temp2 + "\r\n\r\n"))
+            printMessage(STANDARD_COLOR, "OT " + temp2 + "\r\n\r\n")
 
         else:
             clientSocket.send(str.encode("EDNE\r\n\r\n"))
+            printMessage(STANDARD_COLOR, "EDNE\r\n\r\n")
 
 
     else:
-        print("Received garbage client command from " + clientSocket)
+        printMessage(ERROR_COLOR, "Received garbage client command from " + searchByFd(clientSocket).name)
         clientSocket.close()
 
 def worker():
@@ -230,6 +254,7 @@ if __name__ == "__main__":
     # set up listen socket
     serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     host = ''
+    serverSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     serverSocket.bind((host, port))
     serverSocket.listen()
 
@@ -254,6 +279,7 @@ if __name__ == "__main__":
                     jobQueue.put(Job(False, False, False, True, None, None, None, None))
                     for t in threadList:
                         t.join()
+                    serverSocket.close()
                     sys.exit()
                 else:
                     jobQueue.put(Job(True, False, False, False, None, None, None, peekCommand))
