@@ -9,6 +9,7 @@ class Job:
     stdin = False
     client = False
     accept = False
+    quit = False
 
     name = None
     fd = None
@@ -16,10 +17,11 @@ class Job:
 
     command = None
 
-    def __init__(self, stdin, client, accept, name, fd, addr, command):
+    def __init__(self, stdin, client, accept, quit, name, fd, addr, command):
         self.stdin = stdin
         self.client = client
         self.accept = accept
+        self.quit = quit
         self.name = name
         self.fd = fd
         self.addr = addr
@@ -180,6 +182,10 @@ def worker():
         #Grab the lock first before accessing the queue
         jobQueueLock.acquire()
         job = jobQueue.get(block=True,timeout=None)
+        if job.quit:
+            jobQueue.put(job)
+            jobQueueLock.release()
+            sys.exit()
         jobQueueLock.release()
 
         if job.accept:
@@ -238,16 +244,24 @@ if __name__ == "__main__":
             if r is serverSocket:
                 socket, addr = serverSocket.accept()
                 clientList.append(Client(None, socket, addr))
-                jobQueue.put(Job(False, False, True, None, socket, addr, None))
+                jobQueue.put(Job(False, False, True, False, None, socket, addr, None))
 
             #stdin command
             elif r is sys.stdin:
-                jobQueue.put(Job(True, False, False, None, None, None, sys.stdin.readline()))
+                peekCommand = sys.stdin.readline()
+                if peekCommand == "/shutdown\n":
+                    #place special quit job here
+                    jobQueue.put(Job(False, False, False, True, None, None, None, None))
+                    for t in threadList:
+                        t.join()
+                    sys.exit()
+                else:
+                    jobQueue.put(Job(True, False, False, False, None, None, None, peekCommand))
 
             #else it must be a client socket, use semaphore to ensure the same exact job isn't being repeated across all threads
             else:
                 client = searchByFd(r)
-                jobQueue.put(Job(False, True, False, client.name, r, client.addr, None))
+                jobQueue.put(Job(False, True, False, False, client.name, r, client.addr, None))
                 clientCommandSemaphore.acquire(blocking=True)
 
 
