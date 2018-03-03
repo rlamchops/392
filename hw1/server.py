@@ -147,7 +147,7 @@ def clientCommands(clientSocket, name, addr):
     clientCommandSemaphore.release()
 
     #client closed socket suddenly so time to clean it up
-    if message == None:
+    if message is None:
         c.fd.close()
         return
 
@@ -165,7 +165,7 @@ def clientCommands(clientSocket, name, addr):
         temp = "UTSIL"
         for client in clientList:
             temp += (" " + client.name)
-        temp +=  "\r\n\r\n"
+        temp += "\r\n\r\n"
         clientSocket.send(str.encode(temp))
         printMessage(STANDARD_COLOR, temp)
 
@@ -174,7 +174,9 @@ def clientCommands(clientSocket, name, addr):
         toArgs = message.split(maxsplit = 2)
         #first check if correct # of args
         if len(toArgs) != 3:
-            printMessage(ERROR_COLOR, "Received garbage client command from " + searchByFd(clientSocket).name)
+            printMessage(ERROR_COLOR, "Received garbage client command from " + searchByFd(clientSocket).name + ", now closing connection")
+            clientSocket.close()
+            removeByFd(clientSocket)
             return
         #check if target exists
         x = searchForClient(toArgs[1])
@@ -187,8 +189,12 @@ def clientCommands(clientSocket, name, addr):
             printMessage(STANDARD_COLOR, toSend)
             #now wait for MORF
             temp = readSocket(x.fd)
+            #Improper response sent, close client connection due to garbage
             if temp != ("MORF " + toArgs[1]):
-                printMessage(ERROR_COLOR, "uh oh")
+                printMessage(ERROR_COLOR, "Improper MORF response sent from client, closing connection")
+                clientSocket.close()
+                removeByFd(clientSocket)
+                return
             clientSocket.send(str.encode("OT " + temp2 + "\r\n\r\n"))
             printMessage(STANDARD_COLOR, "OT " + temp2 + "\r\n\r\n")
 
@@ -197,24 +203,31 @@ def clientCommands(clientSocket, name, addr):
             printMessage(STANDARD_COLOR, "EDNE\r\n\r\n")
 
 
+    #Unrecognized command received from a client
+    #Close the connection and remove it from the client list
     else:
         printMessage(ERROR_COLOR, "Received garbage client command from " + searchByFd(clientSocket).name)
         clientSocket.close()
+        removeByFd(clientSocket)
 
 def worker():
     while True:
         #Grab the lock first before accessing the queue
         jobQueueLock.acquire()
         job = jobQueue.get(block=True,timeout=None)
+        #If job.quit is true then /shutdown was sent by user in server
+        #Clean up and exit out all threads
         if job.quit:
             jobQueue.put(job)
             jobQueueLock.release()
             sys.exit()
         jobQueueLock.release()
 
+        #Case for login procedure of a new client
         if job.accept:
             loginClient(job.fd, job.addr)
 
+        #Case for when a client sent a command like LISTU
         elif job.client:
             clientCommands(job.fd, job.name, job.addr)
 
@@ -227,16 +240,6 @@ def worker():
                     print ("No one is currently online")
                 for x in clientList:
                     print (x.name)
-            elif job.command == "/shutdown\n":
-                # for x in clientList:
-                #    x.fd.close()
-                # jobQueueLock.acquire()
-                # for y in jobQueue.items:
-                #    y.fd.close()
-                # jobQueueLock.release()
-                # for t in threadList:
-                #     t.exit()
-                sys.exit()
             else:
                 print ("Unrecognizable command " + job.command)
 
@@ -279,6 +282,9 @@ if __name__ == "__main__":
                     jobQueue.put(Job(False, False, False, True, None, None, None, None))
                     for t in threadList:
                         t.join()
+                    #Now close all sockets and then exit
+                    for client in clientList:
+                        client.fd.close()
                     serverSocket.close()
                     sys.exit()
                 else:
