@@ -41,11 +41,12 @@ jobQueue = queue.Queue()
 jobQueueLock = Lock()
 
 clientList = []
+clientListLock = Lock()
 
 port = None
 numwWorkers = None
 motd = None
-clientCommandSemaphore = Semaphore(0)
+#clientCommandSemaphore = Semaphore(0)
 helpMessage = """HELP DIALOGUE
 /help                   Prints this help message
 /users                  Dumps list of currently logged in users to stdout
@@ -101,8 +102,13 @@ def searchByFd(fd):
     return None
 
 def removeByFd(fd):
+    clientListLock.acquire()
+
     c = searchByFd(fd)
-    clientList.remove(c)
+    if c is not None:
+        clientList.remove(c)
+
+    clientListLock.release()
     return
 
 def printMessage(color, message):
@@ -142,13 +148,11 @@ def loginClient(fd, addr):
     searchByFd(fd).name = name
     return
 
-def clientCommands(clientSocket, name, addr):
-    message = readSocket(clientSocket)
-    clientCommandSemaphore.release()
-
+def clientCommands(clientSocket, name, addr, message):
     #client closed socket suddenly so time to clean it up
     if message is None:
-        c.fd.close()
+        removeByFd(clientSocket)
+        clientSocket.close()
         return
 
     elif message == "BYE":
@@ -156,7 +160,7 @@ def clientCommands(clientSocket, name, addr):
         clientSocket.send(str.encode("EYB\r\n\r\n"))
         printMessage(STANDARD_COLOR, "EYB\r\n\r\n")
         clientSocket.close()
-        clientList.remove(searchByFd(clientSocket))
+        removeByFd(clientSocket)
         for client in clientList:
             client.fd.send(str.encode("UOFF " + name + "\r\n\r\n"))
             printMessage(STANDARD_COLOR, "UOFF " + name + "\r\n\r\n")
@@ -229,7 +233,7 @@ def worker():
 
         #Case for when a client sent a command like LISTU
         elif job.client:
-            clientCommands(job.fd, job.name, job.addr)
+            clientCommands(job.fd, job.name, job.addr, job.command)
 
         elif job.stdin:
             print(job.command)
@@ -264,8 +268,15 @@ if __name__ == "__main__":
     while True:
         inputs = [sys.stdin, serverSocket]
         for c in clientList:
+            if c.fd == -1:
+                clientList.remove(c)
+                continue
             inputs.append(c.fd)
-        readable, writable, exceptional = select.select(inputs, [], inputs)
+        # ValueError or OSError could be thrown if a client socket abruptly closes or dies while sitting in select
+        try:
+            readable, writable, exceptional = select.select(inputs, [], inputs)
+        except ValueError and OSError:
+            continue
 
         for r in readable:
             #time to accept a connection
@@ -290,15 +301,10 @@ if __name__ == "__main__":
                 else:
                     jobQueue.put(Job(True, False, False, False, None, None, None, peekCommand))
 
-            #else it must be a client socket, use semaphore to ensure the same exact job isn't being repeated across all threads
+            #else it must be a client socket, read out the command right away
+            #client could be None if the client abruptly died, so conintue instead of crashing the server
             else:
                 client = searchByFd(r)
-                jobQueue.put(Job(False, True, False, False, client.name, r, client.addr, None))
-                clientCommandSemaphore.acquire(blocking=True)
-
-
-
-
-
-
-
+                if client is None:
+                    continue
+                jobQueue.put(Job(False, True, False, False, client.name, r, client.addr, readSocket(r)))
