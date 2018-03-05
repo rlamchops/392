@@ -99,13 +99,15 @@ def searchByFd(fd):
 
 def removeByFd(fd):
     clientListLock.acquire()
+    ret = False
 
     c = searchByFd(fd)
     if c is not None:
         clientList.remove(c)
+        ret = True
 
     clientListLock.release()
-    return
+    return ret
 
 def printMessage(color, message):
     if verbose:
@@ -147,8 +149,13 @@ def loginClient(fd):
 def clientCommands(clientSocket, name, message):
     #client closed socket suddenly so time to clean it up
     if message is None:
-        removeByFd(clientSocket)
+        if not removeByFd(clientSocket):
+            return
         clientSocket.close()
+        #message clients that this user is gone now
+        for client in clientList:
+            client.fd.send(str.encode("UOFF " + name + "\r\n\r\n"))
+            printMessage(STANDARD_COLOR, "UOFF " + name + "\r\n\r\n")
         return
 
     elif message == "BYE":
