@@ -13,29 +13,25 @@ class Job:
 
     name = None
     fd = None
-    addr = None
 
     command = None
 
-    def __init__(self, stdin, client, accept, quit, name, fd, addr, command):
+    def __init__(self, stdin, client, accept, quit, name, fd, command):
         self.stdin = stdin
         self.client = client
         self.accept = accept
         self.quit = quit
         self.name = name
         self.fd = fd
-        self.addr = addr
         self.command = command
 
 class Client:
     name = ''
     fd = None
-    addr = None
 
-    def __init__(self, name, fd, addr):
+    def __init__(self, name, fd):
         self.name = name
         self.fd = fd
-        self.addr = addr
 
 jobQueue = queue.Queue()
 jobQueueLock = Lock()
@@ -116,7 +112,7 @@ def printMessage(color, message):
         print(color + "VERBOSE: " + message + '\x1b[0m')
 
 #Go through login procedure and if successful add to clientList the new client
-def loginClient(fd, addr):
+def loginClient(fd):
     message = readSocket(fd)
     if message != "ME2U":
         print("ME2U was not sent by the client now closing connection with this client.")
@@ -148,7 +144,7 @@ def loginClient(fd, addr):
     searchByFd(fd).name = name
     return
 
-def clientCommands(clientSocket, name, addr, message):
+def clientCommands(clientSocket, name, message):
     #client closed socket suddenly so time to clean it up
     if message is None:
         removeByFd(clientSocket)
@@ -229,11 +225,11 @@ def worker():
 
         #Case for login procedure of a new client
         if job.accept:
-            loginClient(job.fd, job.addr)
+            loginClient(job.fd)
 
         #Case for when a client sent a command like LISTU
         elif job.client:
-            clientCommands(job.fd, job.name, job.addr, job.command)
+            clientCommands(job.fd, job.name, job.command)
 
         elif job.stdin:
             print(job.command)
@@ -282,15 +278,15 @@ if __name__ == "__main__":
             #time to accept a connection
             if r is serverSocket:
                 socket, addr = serverSocket.accept()
-                clientList.append(Client(None, socket, addr))
-                jobQueue.put(Job(False, False, True, False, None, socket, addr, None))
+                clientList.append(Client(None, socket))
+                jobQueue.put(Job(False, False, True, False, None, socket, None))
 
             #stdin command
             elif r is sys.stdin:
                 peekCommand = sys.stdin.readline()
                 if peekCommand == "/shutdown\n":
                     #place special quit job here
-                    jobQueue.put(Job(False, False, False, True, None, None, None, None))
+                    jobQueue.put(Job(False, False, False, True, None, None, None))
                     for t in threadList:
                         t.join()
                     #Now close all sockets and then exit
@@ -299,7 +295,7 @@ if __name__ == "__main__":
                     serverSocket.close()
                     sys.exit()
                 else:
-                    jobQueue.put(Job(True, False, False, False, None, None, None, peekCommand))
+                    jobQueue.put(Job(True, False, False, False, None, None, peekCommand))
 
             #else it must be a client socket, read out the command right away
             #client could be None if the client abruptly died, so conintue instead of crashing the server
@@ -307,4 +303,4 @@ if __name__ == "__main__":
                 client = searchByFd(r)
                 if client is None:
                     continue
-                jobQueue.put(Job(False, True, False, False, client.name, r, client.addr, readSocket(r)))
+                jobQueue.put(Job(False, True, False, False, client.name, r, readSocket(r)))
