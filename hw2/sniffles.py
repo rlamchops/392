@@ -2,7 +2,7 @@ import argparse
 import socket
 import sys
 import struct
-# import hexdump
+import hexdump
 import signal
 import fcntl
 
@@ -23,7 +23,7 @@ def argParse():
     parser.add_argument('-f', '--filter', metavar='{UDP, Ethernet, DNS, IP, TCP, ONE_MORE_OF_YOUR_CHOOSING}', help='Filter for one specified protocol')
     args = parser.parse_args()
 
-    return args.INTERFACE, args.output, args.timeout, args.filter
+    return args.INTERFACE, args.output, args.timeout, args.filter, args.hexdump
 
 # def getInterfaceIP(iname):
 #     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -33,13 +33,15 @@ def argParse():
 #         return None
 #     return interfaceIP
 
-def sniffle(sniffler):
+def sniffle(sniffler, toHex):
     while True:
         packet = sniffler.recvfrom(65565)
-        print (packet)
+        packet = packet[0]
+        if toHex:
+            hexdump.hexdump(packet)
 
 if __name__ == "__main__":
-    interface, outputFile, timeout, filter = argParse()
+    interface, outputFile, timeout, filter, toHex = argParse()
     # foundInterface = getInterfaceIP(interface)
     # if not foundInterface:
     #     print ("Did not find the IP for given interface " + interface + ". Closing... \n")
@@ -58,7 +60,7 @@ if __name__ == "__main__":
         signal.alarm(TIMEOUT)
 
     try:
-        sniffle(sniffler)
+        sniffle(sniffler, toHex)
     except Exception as e:
         print(e)
 
