@@ -11,8 +11,10 @@ FILTER = None
 OUTPUT = None
 INTERFACE = None
 
+
 def sigHandler(signum, frame):
     raise Exception("Finished sniffing on " + INTERFACE + " for " + str(TIMEOUT) + " seconds. Closing... \n")
+
 
 def argParse():
     parser = argparse.ArgumentParser()
@@ -25,13 +27,6 @@ def argParse():
 
     return args.INTERFACE, args.output, args.timeout, args.filter, args.hexdump
 
-# def getInterfaceIP(iname):
-#     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-#     try:
-#         interfaceIP = socket.inet_ntoa(fcntl.ioctl(s.fileno(), 0x8915, struct.pack('256s', iname[:15].encode('utf-8')))[20:24])
-#     except (OSError, IOError) as e:
-#         return None
-#     return interfaceIP
 
 def sniffle(sniffler, toHex):
     while True:
@@ -40,14 +35,13 @@ def sniffle(sniffler, toHex):
         if toHex:
             hexdump.hexdump(packet)
 
+
 if __name__ == "__main__":
     interface, outputFile, timeout, filter, toHex = argParse()
-    # foundInterface = getInterfaceIP(interface)
-    # if not foundInterface:
-    #     print ("Did not find the IP for given interface " + interface + ". Closing... \n")
-    #     sys.exit()
+
     INTERFACE = interface
     sniffler = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.ntohs(0x0003))
+
     try:
         sniffler.bind((interface, 0))
     except (OSError, IOError) as e:
