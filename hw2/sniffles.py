@@ -5,6 +5,7 @@ import struct
 import hexdump
 import signal
 import fcntl
+import packet as p
 
 TIMEOUT = -1
 FILTER = None
@@ -34,6 +35,7 @@ def sniffle(sniffler, toHex):
         packet = packet[0]
         if toHex:
             hexdump.hexdump(packet)
+        p.parsePacket(packet)
 
 
 if __name__ == "__main__":

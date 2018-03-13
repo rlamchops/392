@@ -3,12 +3,12 @@ from construct import *
 #--------------------------------------------------------------------------------
 #-------------------------Example use of construct-------------------------------
 #--------------------------------------------------------------------------------
-s = Struct(
-        "a" / Byte,
-        "b" / Short,
-)
-
-print (s.parse(b"\x01\x02\x03"))
+# s = Struct(
+#         "a" / Byte,
+#         "b" / Short,
+# )
+#
+# print (s.parse(b"\x01\x02\x03"))
 
 #--------------------------------------------------------------------------------
 #----------------------------Packet types----------------------------------------
@@ -17,10 +17,10 @@ print (s.parse(b"\x01\x02\x03"))
 ethernet = Struct (
         "destination" / Bytes(6),
         "source" / Bytes(6),
-        "type" / Enum(Int16ub, IPv4=0x0800, ARP=0x0806, RARP=0x8035, X25=0x0805, IPX=0x8137, IPv6=0x86DD,),
+        "type" / Enum(Int16ub, IPv4=0x0800, ARP=0x0806, RARP=0x8035, X25=0x0805, IPX=0x8137, IPv6=0x86DD, default=Pass,),
 )
 
-print (ethernet.parse(b"\x01\x02\x03\x04\x05\x06\x07\x08\x09\x10\x11\x12\x08\x00"))
+# print (ethernet.parse(b"\x01\x02\x03\x04\x05\x06\x07\x08\x09\x10\x11\x12\x08\x00"))
 
 ipv4 = Struct (
     BitStruct(
@@ -42,7 +42,7 @@ ipv4 = Struct (
         "fragment_offset" / BitsInteger(13),
     ),
     "ttl" / Int8ub,
-    "protocol" / Enum(Int8ub, TCP=0x06, UDP=0x11,),
+    "protocol" / Enum(Int8ub, TCP=0x06, UDP=0x11, default=Pass,),
     "checksum" / Int16ub,
     "source" / Int32ub,
     "destination" / Int32ub,
@@ -101,34 +101,41 @@ udp = Struct (
 #--------------------------------------------------------------------------------
 
 layer4tcp = Struct (
-    Embedded(tcp),
+    "header" / tcp,
 )
 
 layer4udp = Struct (
-    Embedded(udp),
+    "header" / udp,
 )
 
 #the first arg of the switch is what to switch on. currently a placeholder
 layer3ipv4 = Struct (
-    Embedded(ipv4),
-    Switch(this.protocol, {
+    "header" / ipv4,
+    "layer4 " / Switch(this.header.protocol, {
         "TCP": layer4tcp,
         "UDP": layer4udp,
     }),
 )
 
 layer3ipv6 = Struct (
-    Embedded(ipv6),
-    Switch(this.protocol, {
+    "header" / ipv6,
+    "layer4" / Switch(this.header.protocol, {
         "TCP": layer4tcp,
         "UDP": layer4udp,
     }),
 )
 
 layer2ethernet = Struct (
-    Embedded(ethernet),
-    Switch(this.type, {
+    "header" / ethernet,
+    "layer3" / Switch(this.header.type, {
         "IPv4": layer3ipv4,
         "IPv6": layer3ipv6,
     }),
 )
+
+#--------------------------------------------------------------------------------
+#----------------------Utility functions for sniffles----------------------------
+#--------------------------------------------------------------------------------
+def parsePacket(packet):
+    pkt = layer2ethernet.parse(packet)
+    print(pkt)
