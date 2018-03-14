@@ -11,23 +11,42 @@ from construct import *
 # print (s.parse(b"\x01\x02\x03"))
 
 #--------------------------------------------------------------------------------
+#-----------------------------Formatters for MAC & IP addresses------------------
+#--------------------------------------------------------------------------------
+
+ip4Address = ExprAdapter(Byte[4],
+    decoder = lambda obj,ctx: "{0}.{1}.{2}.{3}".format(*obj),
+    encoder = lambda obj,ctx: [int(x) for x in obj.split(".")],
+)
+
+ip6Address = ExprAdapter(Byte[16],
+    decoder = lambda obj,ctx: ":".join("%02x" % b for b in obj),
+    encoder = lambda obj,ctx: [int(part, 16) for part in obj.split(":")],
+)
+
+macAddress = ExprAdapter(Byte[6],
+    decoder = lambda obj,ctx: "-".join("%02x" % b for b in obj),
+    encoder = lambda obj,ctx: [int(part, 16) for part in obj.split("-")],
+)
+
+#--------------------------------------------------------------------------------
 #----------------------------Packet types----------------------------------------
 #--------------------------------------------------------------------------------
 
 ethernet = Struct (
-        "destination" / Bytes(6),
-        "source" / Bytes(6),
+        "destination" / macAddress,
+        "source" / macAddress,
         "type" / Enum(Int16ub, IPv4=0x0800, ARP=0x0806, RARP=0x8035, X25=0x0805, IPX=0x8137, IPv6=0x86DD, default=Pass,),
 )
 
 # print (ethernet.parse(b"\x01\x02\x03\x04\x05\x06\x07\x08\x09\x10\x11\x12\x08\x00"))
 
 ipv4 = Struct (
-    BitStruct(
+    "information" / BitStruct(
         "version" / Nibble,
         "headerLength" / Nibble,
     ),
-    BitStruct(
+    "dcsp_ecn" / BitStruct(
         "precendence" / BitsInteger(3),
         "minimize_delay" / Flag,
         "high_throughput" / Flag,
@@ -37,20 +56,23 @@ ipv4 = Struct (
     ),
     "total_length" / Int16ub,
     "identification" / Int16ub,
-    BitStruct (
+    "flags_offset" / BitStruct (
         "flags" / BitsInteger(3),
         "fragment_offset" / BitsInteger(13),
     ),
     "ttl" / Int8ub,
     "protocol" / Enum(Int8ub, TCP=0x06, UDP=0x11, default=Pass,),
     "checksum" / Int16ub,
-    "source" / Int32ub,
-    "destination" / Int32ub,
-    #variable options field, then data comes after that
+    "source" / ip4Address,
+    "destination" / ip4Address,
+    #variable options field. the headerLength tells you total size of the header (in 4 byte words).
+    #according to wikipedia, options only exist if headerLength > 5
+    "options" / Bytes(this.information.headerLength - 5),
+    #then data comes after that
 )
 
 ipv6 = Struct (
-    BitStruct (
+    "information" / BitStruct (
         "version" / Nibble,
         "trafficClass" / Octet,
         "flowLabel" / BitsInteger(20),
@@ -69,7 +91,7 @@ tcp = Struct (
     "destinationPort" / Int16ub,
     "seq" / Int32ub,
     "ack" / Int32ub,
-    BitStruct (
+    "flags" / BitStruct (
         "dataOffset" / Nibble,
         "reserved" / BitsInteger(3),
         "ns" / Flag,
@@ -85,7 +107,9 @@ tcp = Struct (
     "windowSize" / Int16ub,
     "checksum" / Int16ub,
     "urgentPointer" / Int16ub,
-    #variable options field, then data comes after that
+    #variable options field. similar to IPv4's headerLength, except dataOffset determines its size instead
+    "options" / Bytes(this.flags.dataOffset - 5),
+    #then data comes after that
 )
 
 udp = Struct (
