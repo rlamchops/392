@@ -89,14 +89,16 @@ ipv6 = Struct (
 
 dns = Struct (
     "ID" / Int16ub,
-    "QR" / Flag,
-    "Opcode" / BitsInteger(4),
-    "AA" / Flag,
-    "TC" / Flag,
-    "RD" / Flag,
-    "RA" / Flag,
-    "Z" / BitsInteger(3), #Three reserved bits that are zero
-    "RCode" / BitsInteger(4),
+    "Flags"/ BitStruct(
+        "QR" / Flag,
+        "Opcode" / BitsInteger(4),
+        "AA" / Flag,
+        "TC" / Flag,
+        "RD" / Flag,
+        "RA" / Flag,
+        "Z" / BitsInteger(3), #Three reserved bits that are zero
+        "RCode" / BitsInteger(4),
+    ),
     "QDCount" / Int16ub,
     "ANCount" / Int16ub,
     "NSCount" / Int16ub,
