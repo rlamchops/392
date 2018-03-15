@@ -39,15 +39,17 @@ def sniffle(sniffler, toHex):
 
 
 if __name__ == "__main__":
+    #First grab the command line arguments
     interface, outputFile, timeout, filter, toHex = argParse()
 
+    #Set the INTERFACE to listen on and create a raw socket
     INTERFACE = interface
     sniffler = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.ntohs(0x0003))
 
     try:
         sniffler.bind((interface, 0))
     except (OSError, IOError) as e:
-        print ("Did not find the IP for given interface " + interface + ". Closing...\n")
+        print("Did not find the IP for given interface " + interface + ". Closing...\n")
         sys.exit()
 
     if timeout:

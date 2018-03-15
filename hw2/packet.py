@@ -1,4 +1,5 @@
 from construct import *
+import sys
 
 #--------------------------------------------------------------------------------
 #-------------------------Example use of construct-------------------------------
@@ -86,6 +87,25 @@ ipv6 = Struct (
     #data comes after
 )
 
+
+dns = Struct (
+    "ID" / Int16ub,
+    "flags" / BitStruct (
+        "QR" / BitsInteger(1),
+        "Opcode" / BitsInteger(4),
+        "AA" / BitsInteger(1),
+        "TC" / BitsInteger(1),
+        "RD" / BitsInteger(1),
+        "RA" / BitsInteger(1),
+    ),
+    "Z" / BitsInteger(3), #Three reserved bits that are zero
+    "RCode" / BitsInteger(4),
+    "QDCount" / Int16ub,
+    "ANCount" / Int16ub,
+    "NSCount" / Int16ub,
+    "ARCount" / Int16ub,
+)
+
 tcp = Struct (
     "sourcePort" / Int16ub,
     "destinationPort" / Int16ub,
@@ -118,6 +138,7 @@ udp = Struct (
     "length" / Int16ub,
     "checksum" / Int16ub,
     #data comes after
+    "DNS" / dns,
 )
 
 icmp = Struct (
@@ -134,7 +155,6 @@ icmpv6 = Struct (
     "checksum" / Int16ub,
     "roh" / Int32ub,
 )
-
 #--------------------------------------------------------------------------------
 #--------------------Total packet formation--------------------------------------
 #--------------------------------------------------------------------------------
@@ -187,17 +207,18 @@ layer2ethernet = Struct (
 #if option is none, then no filter, else filter
 def parsePacket(packet):
     pkt = layer2ethernet.parse(packet)
-    temp = pkt.header
-    while temp:
-        printInfo(temp)
-        # print("hi")
-        if "next" in pkt and pkt["next"] is not None:
-            pkt = pkt.next
-            if pkt is not None:
-                temp = pkt.header
-                # print("hi")
-        else:
-            break
+    print(pkt)
+    # temp = pkt.header
+    # while temp:
+    #     printInfo(temp)
+    #     # print("hi")
+    #     if "next" in pkt and pkt["next"] is not None:
+    #         pkt = pkt.next
+    #         if pkt is not None:
+    #             temp = pkt.header
+    #             # print("hi")
+    #     else:
+    #         break
 
 def printInfo(header):
     print("hi")
