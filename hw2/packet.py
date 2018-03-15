@@ -209,14 +209,14 @@ layer2ethernet = Struct (
 #--------------------------------------------------------------------------------
 
 #if option is none, then no filter, else filter
-def parsePacket(packet):
+def parsePacket(packet, filter):
     pkt = layer2ethernet.parse(packet)
     # print(pkt)
     temp = pkt.header
     while pkt:
         if pkt is not None:
             temp = pkt.header
-            printInfo(temp)
+            printInfo(temp, filter)
             # print(temp)
         if "nextHeader" in pkt and pkt["nextHeader"] is not None:
             pkt = pkt.nextHeader
@@ -224,24 +224,29 @@ def parsePacket(packet):
         else:
             break
 
-def printInfo(header):
+def printInfo(header, filter):
     #is this ethernet?
     if "ethertype" in header:
-        print ("Ethernet(Source=%s, Destination=%s, Type=%s)" % (header.source, header.destination, header.ethertype))
+        if filter == "Ethernet" or filter is None:
+            print ("Ethernet(Source=%s, Destination=%s, Type=%s)" % (header.source, header.destination, header.ethertype))
     #is this IPv4?
     elif "protocol" in header:
-        temp = buildFlagString(header, "IPv4")
-        print ("IPv4(Version=%s, HeadLen=%s, Precedence=%s, Dcsp/Ecn=%s, TotalLen=%s, Identification=%s, Flags=%s, FragmentOffset=%s, Ttl=%s, Protocol=%s, Chksum=%s, Src=%s, Dest=%s, Options=%s)" % (header.information.version, header.information.headerLength, header.dcsp_ecn.precendence, temp, header.total_length, header.identification, header.flags_offset.flags, header.flags_offset.fragment_offset, header.ttl, header.protocol, header.checksum, header.source, header.destination, header.options))
+        if filter == "IPv4" or filter is None:
+            temp = buildFlagString(header, "IPv4")
+            print ("IPv4(Version=%s, HeadLen=%s, Precedence=%s, Dcsp/Ecn=%s, TotalLen=%s, Identification=%s, Flags=%s, FragmentOffset=%s, Ttl=%s, Protocol=%s, Chksum=%s, Src=%s, Dest=%s, Options=%s)" % (header.information.version, header.information.headerLength, header.dcsp_ecn.precendence, temp, header.total_length, header.identification, header.flags_offset.flags, header.flags_offset.fragment_offset, header.ttl, header.protocol, header.checksum, header.source, header.destination, header.options))
     #is this IPv6?
     elif "nextHeader" in header:
-        print("IPv6(Version=%s, TrafficClass=%s, FlowLabel=%s, PayloadLength=%s, NextHeader=%s, HopLimit=%s, SrcAdd=%s, DestAddr=%s)" % (header.information.version, header.information.trafficClass, header.information.flowLabel, header.payloadLength, header.nextHeader, header.hopLimit, header.sourceAddress, header.destinationAddress))
+        if filter == "IPv6" or filter is None:
+            print("IPv6(Version=%s, TrafficClass=%s, FlowLabel=%s, PayloadLength=%s, NextHeader=%s, HopLimit=%s, SrcAdd=%s, DestAddr=%s)" % (header.information.version, header.information.trafficClass, header.information.flowLabel, header.payloadLength, header.nextHeader, header.hopLimit, header.sourceAddress, header.destinationAddress))
     #is this tcp?
     elif "ack" in header:
-        temp = buildFlagString(header,"TCP")
-        print("TCP(SrcPort=%s, DestPort=%s, SeqNum=%s, AckNum=%s, DataOff=%s, Flags=%s, WinSize=%s, ChkSum=%s, UrgPointer=%s, Options=%s)" % (header.sourcePort, header.destinationPort, header.seq, header.ack, header.flags.dataOffset, temp, header.windowSize, header.checksum, header.urgentPointer, header.options))
+        if filter == "TCP" or filter is None:
+            temp = buildFlagString(header,"TCP")
+            print("TCP(SrcPort=%s, DestPort=%s, SeqNum=%s, AckNum=%s, DataOff=%s, Flags=%s, WinSize=%s, ChkSum=%s, UrgPointer=%s, Options=%s)" % (header.sourcePort, header.destinationPort, header.seq, header.ack, header.flags.dataOffset, temp, header.windowSize, header.checksum, header.urgentPointer, header.options))
     #if there's no ack, then is this udp?
     elif "sourcePort" in header and "destinationPort" in header:
-        print("UDP(SrcPort=%s, DestPort=%s, Length=%s, Chksum=%s)" % (header.sourcePort, header.destinationPort, header.length, header.checksum))
+        if filter == "UDP" or filter is None:
+            print("UDP(SrcPort=%s, DestPort=%s, Length=%s, Chksum=%s)" % (header.sourcePort, header.destinationPort, header.length, header.checksum))
     else:
         print ("Unknown/unsupported packet type")
 

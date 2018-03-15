@@ -29,13 +29,13 @@ def argParse():
     return args.INTERFACE, args.output, args.timeout, args.filter, args.hexdump
 
 
-def sniffle(sniffler, toHex):
+def sniffle(sniffler, toHex, filter):
     while True:
         packet = sniffler.recvfrom(65565)
         packet = packet[0]
         if toHex:
             hexdump.hexdump(packet)
-        p.parsePacket(packet)
+        p.parsePacket(packet, filter)
 
 
 if __name__ == "__main__":
@@ -58,7 +58,9 @@ if __name__ == "__main__":
         signal.alarm(TIMEOUT)
 
     try:
-        sniffle(sniffler, toHex)
+        sniffle(sniffler, toHex, filter)
+    except KeyboardInterrupt:
+        print("\nReceived Ctrl-C. Exiting...")
     except Exception as e:
         print(e)
 
