@@ -1,3 +1,4 @@
 output.txt
-*.pyc
+hex.txt
 __pychache__/
+packet.pyc
