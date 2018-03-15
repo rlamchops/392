@@ -1,5 +1,4 @@
 from construct import *
-import sys
 
 #--------------------------------------------------------------------------------
 #-------------------------Example use of construct-------------------------------
@@ -90,14 +89,12 @@ ipv6 = Struct (
 
 dns = Struct (
     "ID" / Int16ub,
-    "flags" / BitStruct (
-        "QR" / BitsInteger(1),
-        "Opcode" / BitsInteger(4),
-        "AA" / BitsInteger(1),
-        "TC" / BitsInteger(1),
-        "RD" / BitsInteger(1),
-        "RA" / BitsInteger(1),
-    ),
+    "QR" / Flag,
+    "Opcode" / BitsInteger(4),
+    "AA" / Flag,
+    "TC" / Flag,
+    "RD" / Flag,
+    "RA" / Flag,
     "Z" / BitsInteger(3), #Three reserved bits that are zero
     "RCode" / BitsInteger(4),
     "QDCount" / Int16ub,
