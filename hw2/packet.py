@@ -68,6 +68,7 @@ ipv4 = Struct (
     #variable options field. the headerLength tells you total size of the header (in 4 byte words).
     #according to wikipedia, options only exist if headerLength > 5
     "options" / Bytes(this.information.headerLength - 5),
+    "payloadLength" / Computed(this.total_length - this.information.headerLength * 4),
     #then data comes after that
 )
 
@@ -160,10 +161,14 @@ icmpv6 = Struct (
 
 layer4tcp = Struct (
     "header" / tcp,
+    #tcp doesn't have a payload length field so need to calculate based on layer 3
+    "payload" / Bytes(this._.header.payloadLength - this.header.flags.dataOffset * 4)
 )
 
 layer4udp = Struct (
     "header" / udp,
+    #udp's length in the header is the size of both the header and payload, so need to subtract 8
+    "payload" / Bytes(this.header.length - 8)
 )
 
 layer4icmp = Struct (
@@ -207,7 +212,7 @@ layer2ethernet = Struct (
 def parsePacket(packet):
     pkt = layer2ethernet.parse(packet)
     # print(pkt)
-    # temp = pkt.header
+    temp = pkt.header
     while pkt:
         if pkt is not None:
             temp = pkt.header
@@ -220,8 +225,6 @@ def parsePacket(packet):
             break
 
 def printInfo(header):
-    # print(header.ethertype)
-    # print("hi")
     #is this ethernet?
     if "ethertype" in header:
         print ("Ethernet(Source=%s, Destination=%s, Type=%s)" % (header.source, header.destination, header.ethertype))
