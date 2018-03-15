@@ -37,7 +37,7 @@ macAddress = ExprAdapter(Byte[6],
 ethernet = Struct (
         "destination" / macAddress,
         "source" / macAddress,
-        "type" / Enum(Int16ub, IPv4=0x0800, IPv6=0x86DD, default=Pass,),
+        "ethertype" / Enum(Int16ub, IPv4=0x0800, IPv6=0x86DD, default=Pass,),
 )
 
 # print (ethernet.parse(b"\x01\x02\x03\x04\x05\x06\x07\x08\x09\x10\x11\x12\x08\x00"))
@@ -138,7 +138,7 @@ udp = Struct (
     "length" / Int16ub,
     "checksum" / Int16ub,
     #data comes after
-    "DNS" / dns,
+    # "DNS" / dns,
 )
 
 icmp = Struct (
@@ -178,7 +178,7 @@ layer4icmpv6 = Struct (
 #the first arg of the switch is what to switch on
 layer3ipv4 = Struct (
     "header" / ipv4,
-    "next" / Switch(this.header.protocol, {
+    "nextHeader" / Switch(this.header.protocol, {
         "TCP": layer4tcp,
         "UDP": layer4udp,
     },default=None),
@@ -186,7 +186,7 @@ layer3ipv4 = Struct (
 
 layer3ipv6 = Struct (
     "header" / ipv6,
-    "next" / Switch(this.header.protocol, {
+    "nextHeader" / Switch(this.header.protocol, {
         "TCP": layer4tcp,
         "UDP": layer4udp,
     },default=None),
@@ -194,7 +194,7 @@ layer3ipv6 = Struct (
 
 layer2ethernet = Struct (
     "header" / ethernet,
-    "next" / Switch(this.header.type, {
+    "nextHeader" / Switch(this.header.ethertype, {
         "IPv4": layer3ipv4,
         "IPv6": layer3ipv6,
     },default=None),
@@ -207,45 +207,46 @@ layer2ethernet = Struct (
 #if option is none, then no filter, else filter
 def parsePacket(packet):
     pkt = layer2ethernet.parse(packet)
-    print(pkt)
+    # print(pkt)
     # temp = pkt.header
-    # while temp:
-    #     printInfo(temp)
-    #     # print("hi")
-    #     if "next" in pkt and pkt["next"] is not None:
-    #         pkt = pkt.next
-    #         if pkt is not None:
-    #             temp = pkt.header
-    #             # print("hi")
-    #     else:
-    #         break
+    while pkt:
+        if pkt is not None:
+            temp = pkt.header
+            printInfo(temp)
+            # print(temp)
+        if "nextHeader" in pkt and pkt["nextHeader"] is not None:
+            pkt = pkt.nextHeader
+
+        else:
+            break
 
 def printInfo(header):
-    print("hi")
+    # print(header.ethertype)
+    # print("hi")
     #is this ethernet?
-    # if header.type and header.destination and header.source:
-    #     print ("Ethernet(Source=%s, Destination =%s, Type=%s)" % (header.source, header.destination, header.type))
-    # #is this IPv4?
-    # elif header.protocol:
-    #     temp = buildFlagString(header, "IPv4")
-    #     print ("IPv4(Version=%s, HeadLen=%s, Precedence=%s, Dcsp/Ecn=%s, TotalLen=%s, Identification=%s, Flags=%s, FragmentOffset=%s, Ttl=%s, Protocol=%s, Chksum=%s, Src=%s, Dest=%s, Options=%s)" % (header.information.version, header.information.headerLength, header.dcsp_ecn.precendence, temp, header.total_length, header.identification, header.flags_offset.flags, header.flags_offset.fragment_offset, header.ttl, header.protocol, header.checksum, header.source, header.destination, header.options))
-    # #is this IPv6?
-    # elif header.nextHeader:
-    #     print("IPv6(Version=%s, TrafficClass=%s, FlowLabel=%s, PayloadLength=%s, NextHeader=%s, HopLimit=%s, SrcAdd=%s, DestAddr=%s)" % (header.information.version, header.information.trafficClass, header.information.flowLabel, header.payloadLength, header.nextHeader, header.hopLimit, header.sourceAddress, header.destinationAddress))
-    # #is this tcp?
-    # elif header.ack:
-    #     temp = buildFlagString(header,"TCP")
-    #     print("TCP(SrcPort=%s, DestPort=%s, SeqNum=%s, AckNum=%s, DataOff=%s, Flags=%s, WinSize=%s, ChkSum=%s, UrgPointer=%s, Options=%s)" % (header.sourcePort, header.destinationPort, header.seq, header.ack, header.flags.dataOffset, temp, header.windowSize, header.checkSum, header.urgentPointer, header.options))
-    # #if there's no ack, then is this udp?
-    # elif header.sourcePort and header.destinationPort:
-    #     print("UDP(SrcPort=%s, DestPort=%s, Length=%s, Chksum=%s)" % (header.sourcePort, header.destinationPort, header.length, header.checksum))
-    # else:
-    #     print ("Unknown/unsupported packet type")
+    if "ethertype" in header:
+        print ("Ethernet(Source=%s, Destination=%s, Type=%s)" % (header.source, header.destination, header.ethertype))
+    #is this IPv4?
+    elif "protocol" in header:
+        temp = buildFlagString(header, "IPv4")
+        print ("IPv4(Version=%s, HeadLen=%s, Precedence=%s, Dcsp/Ecn=%s, TotalLen=%s, Identification=%s, Flags=%s, FragmentOffset=%s, Ttl=%s, Protocol=%s, Chksum=%s, Src=%s, Dest=%s, Options=%s)" % (header.information.version, header.information.headerLength, header.dcsp_ecn.precendence, temp, header.total_length, header.identification, header.flags_offset.flags, header.flags_offset.fragment_offset, header.ttl, header.protocol, header.checksum, header.source, header.destination, header.options))
+    #is this IPv6?
+    elif "nextHeader" in header:
+        print("IPv6(Version=%s, TrafficClass=%s, FlowLabel=%s, PayloadLength=%s, NextHeader=%s, HopLimit=%s, SrcAdd=%s, DestAddr=%s)" % (header.information.version, header.information.trafficClass, header.information.flowLabel, header.payloadLength, header.nextHeader, header.hopLimit, header.sourceAddress, header.destinationAddress))
+    #is this tcp?
+    elif "ack" in header:
+        temp = buildFlagString(header,"TCP")
+        print("TCP(SrcPort=%s, DestPort=%s, SeqNum=%s, AckNum=%s, DataOff=%s, Flags=%s, WinSize=%s, ChkSum=%s, UrgPointer=%s, Options=%s)" % (header.sourcePort, header.destinationPort, header.seq, header.ack, header.flags.dataOffset, temp, header.windowSize, header.checksum, header.urgentPointer, header.options))
+    #if there's no ack, then is this udp?
+    elif "sourcePort" in header and "destinationPort" in header:
+        print("UDP(SrcPort=%s, DestPort=%s, Length=%s, Chksum=%s)" % (header.sourcePort, header.destinationPort, header.length, header.checksum))
+    else:
+        print ("Unknown/unsupported packet type")
 
 
-def buildFlagString(header, type):
+def buildFlagString(header, ethertype):
     ret = "{"
-    if type=="TCP":
+    if ethertype=="TCP":
         if header.flags.ns:
             ret+="NS "
         if header.flags.cwr:
@@ -264,7 +265,7 @@ def buildFlagString(header, type):
             ret+="SYN "
         if header.flags.cwr:
             ret+="FIN"
-    elif type=="IPv4":
+    elif ethertype=="IPv4":
         if header.dcsp_ecn.minimize_delay:
             ret+="MinDelay "
         if header.dcsp_ecn.high_throughput:
